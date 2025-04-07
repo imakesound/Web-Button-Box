@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Button Accordion - Loop/Progress Fix</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/opensheetmusicdisplay@latest/build/opensheetmusicdisplay.min.js"></script>
+    <style>
+        /* --- CSS (unchanged from previous version) --- */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+        :root { /* Dark Theme */
+            --body-bg: #1a202c; --text-color-base: #cbd5e0; --text-color-ui-label: #a0aec0;
+            --text-color-button: #cbd5e0; --text-color-button-pressed: #edf2f7; --board-bg: #2d3748;
+            --board-shadow: 0 10px 20px rgba(0, 0, 0, 0.3), inset 0 1px 2px rgba(255, 255, 255, 0.05);
+            --button-bg: linear-gradient(145deg, #4a5568, #3a4558);
+            --button-border: #5a6578; --button-shadow-dark: #141821; --button-shadow-light: #3c485e;
+            --button-pressed-bg: linear-gradient(145deg, #3a4558, #4a5568);
+            --button-pressed-border: #4a5568; --button-pressed-shadow-dark: #141821;
+            --button-pressed-shadow-light: #3c485e;
+            --bellows-bg: #4a5568; --bellows-border: #5a6578; --bellows-text: #cbd5e0;
+            --bellows-active-bg: #718096;
+            --select-bg: var(--button-bg); --select-text: var(--text-color-button); --select-border: var(--button-border);
+            --input-bg: #2d3748; --input-border: #5a6578; --input-text: #cbd5e0;
+            --select-arrow-svg: url('data:image/svg+xml;utf8,<svg fill="%23cbd5e0" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/><path d="M0 0h24v24H0z" fill="none"/></svg>');
+            --osmd-bg: #FFFFFF; --playback-button-bg: #4a5568; --playback-button-text: #cbd5e0;
+            --playback-button-border: #5a6578; --playback-button-hover-bg: #5a6578;
+            --control-button-bg: var(--select-bg); --control-button-text: var(--select-text); --control-button-border: var(--select-border);
+            --record-active-color: #f56565; /* Red for recording */
+        }
+        body.theme-light { /* Light Theme */
+            --body-bg: #f7fafc; --text-color-base: #2d3748; --text-color-ui-label: #4a5568;
+            --text-color-button: #4a5568; --text-color-button-pressed: #1a202c; --board-bg: #edf2f7;
+            --board-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05), inset 0 -1px 2px rgba(0,0,0,0.03);
+            --button-bg: linear-gradient(145deg, #ffffff, #e2e8f0);
+            --button-border: #cbd5e0; --button-shadow-dark: #a0aec0; --button-shadow-light: #ffffff;
+            --button-pressed-bg: linear-gradient(145deg, #e2e8f0, #f7fafc);
+            --button-pressed-border: #cbd5e0; --button-pressed-shadow-dark: #a0aec0;
+            --button-pressed-shadow-light: #ffffff;
+            --bellows-bg: #e2e8f0; --bellows-border: #cbd5e0; --bellows-text: #4a5568;
+            --bellows-active-bg: #cbd5e0;
+            --select-bg: var(--button-bg); --select-text: var(--text-color-button); --select-border: var(--button-border);
+            --input-bg: #ffffff; --input-border: #cbd5e0; --input-text: #2d3748;
+            --select-arrow-svg: url('data:image/svg+xml;utf8,<svg fill="%234a5568" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/><path d="M0 0h24v24H0z" fill="none"/></svg>');
+            --osmd-bg: #FFFFFF; --playback-button-bg: #e2e8f0; --playback-button-text: #4a5568;
+            --playback-button-border: #cbd5e0; --playback-button-hover-bg: #cbd5e0;
+             --control-button-bg: var(--select-bg); --control-button-text: var(--select-text); --control-button-border: var(--select-border);
+            --record-active-color: #e53e3e; /* Red for recording */
+        }
+        body.theme-mexico { /* Mexico Theme */
+            --body-bg: #F5F5DC; --text-color-base: #4d2600; --text-color-ui-label: #6b4423;
+            --text-color-button: #FFFFFF; --text-color-button-pressed: #E0E0E0; --board-bg: #A0522D;
+            --board-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+            --button-border: #000000; --button-shadow-dark: #733a1f; --button-shadow-light: #cd6a39;
+            --button-pressed-bg: linear-gradient(135deg, #005338 33.33%, #f0f0f0 33.33%, #f0f0f0 66.66%, #a60d1e 66.66%);
+            --button-pressed-border: #000000; --button-pressed-shadow-dark: #733a1f; --button-pressed-shadow-light: #cd6a39;
+            --bellows-bg: #8B4513; --bellows-border: #4d2600; --bellows-text: #FFFFFF; --bellows-active-bg: #A0522D;
+            --select-bg: #FFFFFF; --select-text: #4d2600; --select-border: #8B4513;
+            --input-bg: #FFFFFF; --input-border: #8B4513; --input-text: #4d2600;
+            --select-arrow-svg: url('data:image/svg+xml;utf8,<svg fill="%234d2600" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/><path d="M0 0h24v24H0z" fill="none"/></svg>');
+            --osmd-bg: #FFF8DC; --playback-button-bg: #8B4513; --playback-button-text: #FFFFFF;
+            --playback-button-border: #4d2600; --playback-button-hover-bg: #A0522D;
+             --control-button-bg: var(--select-bg); --control-button-text: var(--select-text); --control-button-border: var(--select-border);
+            --record-active-color: #ce1126; /* Red for recording */
+        }
+        /* Base styles */
+        body { font-family: 'Inter', sans-serif; display: flex; flex-direction: column; min-height: 100vh; max-h: 100vh; background-color: var(--body-bg); padding: 1rem; transition: background-color 0.3s ease; touch-action: none; user-select: none; -webkit-user-select: none; -ms-user-select: none; overflow: hidden; color: var(--text-color-base); }
+        .accordion-wrapper { display: flex; flex-direction: row; width: 100%; align-items: center; justify-content: flex-start; flex-grow: 1; gap: 1rem; height: calc(100vh - 2rem); overflow: hidden; }
+        .button-board-container { display: flex; flex-direction: row; align-items: center; flex-shrink: 0; }
+        .button-board { display: grid; grid-template-columns: repeat(3, auto); gap: 25px; padding: 0.5vh 30px; background-color: var(--board-bg); box-shadow: var(--board-shadow); transition: background-color 0.3s ease, box-shadow 0.3s ease; box-sizing: border-box; align-content: center; min-width: 0; margin: 0; border-radius: 12px; }
+        .button-row { display: flex; flex-direction: column; gap: 0.5vh; align-items: center; width: min-content; }
+        .button-board .button-row:nth-child(1), .button-board .button-row:nth-child(3) { padding-top: 3.95vh; }
+        .acc-button { height: 7.4vh; width: 7.4vh; border-radius: 50%; cursor: pointer; background: var(--button-bg); border: 1px solid var(--button-border); box-shadow: 4px 4px 8px var(--button-shadow-dark), -4px -4px 8px var(--button-shadow-light), inset 0 0 0 rgba(0,0,0,0); color: var(--text-color-button); transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, color 0.3s ease, transform 0.1s ease-out, outline 0.1s ease-out; display: flex; align-items: center; justify-content: center; font-size: 1.8vh; user-select: none; -webkit-tap-highlight-color: transparent; flex-shrink: 0; pointer-events: auto; text-shadow: 0 0 2px rgba(0,0,0,0.3); outline: 3px solid transparent; outline-offset: 1px; }
+        body.theme-mexico .acc-button { background: linear-gradient(135deg, #006847 33.33%, #FFFFFF 33.33%, #FFFFFF 66.66%, #CE1126 66.66%); border: 1px solid #333; text-shadow: 0 0 3px rgba(0,0,0,0.5); }
+        /* Standard pressed style */
+        .acc-button.pressed { background: var(--button-pressed-bg); border-color: var(--button-pressed-border); box-shadow: inset 4px 4px 8px var(--button-pressed-shadow-dark), inset -4px -4px 8px var(--button-pressed-shadow-light); transform: scale(0.95); color: var(--text-color-button-pressed); }
+        body.theme-mexico .acc-button.pressed { background: var(--button-pressed-bg); box-shadow: inset 2px 2px 4px var(--button-pressed-shadow-dark), inset -2px -2px 4px var(--button-pressed-shadow-light); border-color: #000; color: #ddd; }
+
+        /* --- Playback Indicator Styles --- */
+        .acc-button.pressed.pull-active { outline-color: yellow; } /* Pull = Yellow */
+        .acc-button.pressed.push-active { outline-color: limegreen; } /* Push = Green */
+        .acc-button.pressed.sub-active { outline-color: orange; } /* Substituted = Orange */
+        /* --- End Indicator Styles --- */
+
+        /* Other styles */
+        #bellows-toggle { writing-mode: vertical-rl; text-orientation: mixed; transform: rotate(180deg); display: flex; align-items: center; justify-content: center; width: 50px; align-self: stretch; background-color: var(--bellows-bg); border-left: 2px solid var(--bellows-border); color: var(--bellows-text); font-size: 16px; font-weight: bold; cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; transition: background-color 0.1s ease; flex-shrink: 0; border-top-right-radius: 12px; border-bottom-right-radius: 12px; }
+        #bellows-toggle.active { background-color: var(--bellows-active-bg); }
+        #music-sheet-area { width: 45%; min-width: 300px; display: flex; flex-direction: column; padding: 10px; box-sizing: border-box; background-color: var(--body-bg); flex-shrink: 1; flex-grow: 1; height: 100%; min-height: 0; }
+        #osmd-container { flex-grow: 1; overflow: auto; background-color: var(--osmd-bg); border: 1px solid var(--button-border); border-radius: 8px; margin-bottom: 10px; min-height: 0; position: relative; }
+        #custom-highlight { position: absolute; display: none; background-color: rgba(255, 0, 0, 0.3); width: 10px; height: 50px; z-index: 5; pointer-events: none; border-radius: 2px; transition: background-color 0.1s ease; }
+        .playback-controls { display: flex; justify-content: center; align-items: center; gap: 10px; flex-shrink: 0; padding-bottom: 10px; flex-wrap: wrap; }
+        .playback-controls label, .playback-controls button, #toggle-sheet-music { padding: 8px 15px; font-size: 14px; background-color: var(--playback-button-bg); color: var(--playback-button-text); border: 1px solid var(--playback-button-border); border-radius: 6px; cursor: pointer; transition: background-color 0.2s ease; margin-bottom: 5px; }
+        .playback-controls label.loop-label { padding: 8px 5px; margin-left: 5px; color: var(--text-color-ui-label); font-size: 12px; }
+        .playback-controls input[type="checkbox"] { cursor: pointer; margin-left: 5px; margin-bottom: 5px; }
+        .playback-controls input[type="number"].measure-input { width: 45px; padding: 4px 6px; font-size: 12px; background-color: var(--input-bg); color: var(--input-text); border: 1px solid var(--input-border); border-radius: 4px; margin-left: 2px; margin-right: 5px; margin-bottom: 5px; text-align: center; -moz-appearance: textfield; }
+        .playback-controls input[type="number"].measure-input::-webkit-outer-spin-button,
+        .playback-controls input[type="number"].measure-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+        .playback-controls button:hover:not(:disabled), #toggle-sheet-music:hover { background-color: var(--playback-button-hover-bg); }
+        .playback-controls button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .playback-controls input[type="file"] { display: none; }
+        #playback-status { text-align: center; font-size: 12px; min-height: 1.5em; color: var(--text-color-base); width: 100%; margin-top: 5px; }
+        #playback-progress-display { text-align: center; font-size: 12px; color: var(--text-color-ui-label); width: 100%; margin-top: 2px; min-height: 1.2em; }
+        .speed-control { display: flex; align-items: center; gap: 5px; margin-left: 15px; }
+        .speed-control label { font-size: 12px; color: var(--text-color-ui-label); }
+        .speed-control input[type="range"] { width: 80px; cursor: pointer; height: 8px; }
+        .speed-control span { font-size: 12px; color: var(--text-color-base); min-width: 3.5em; text-align: right; }
+        /* UI Controls in top right */
+        #ui-controls { position: fixed; top: 10px; right: 10px; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; z-index: 101; background-color: rgba(0,0,0,0.1); padding: 10px; border-radius: 8px;}
+        .control-group { display: flex; align-items: center; gap: 5px; }
+        .control-group label { color: var(--text-color-ui-label); font-size: 12px; white-space: nowrap; }
+        .control-select { padding: 5px; background-color: var(--select-bg); color: var(--select-text); border: 1px solid var(--select-border); border-radius: 5px; font-size: 12px; -webkit-appearance: none; -moz-appearance: none; appearance: none; padding-right: 25px; background-image: var(--select-arrow-svg); background-repeat: no-repeat; background-position: right 5px center; background-size: 16px; cursor: pointer; }
+        .control-select:hover { opacity: 0.8; }
+        /* Specific styles for recorder controls */
+        #ui-controls button, #ui-controls label.button-like { font-size: 12px; padding: 5px 10px; background-color: var(--control-button-bg); color: var(--control-button-text); border: 1px solid var(--control-button-border); border-radius: 5px; cursor: pointer; display: inline-block; /* Make label look like button */ }
+        #ui-controls button:disabled, #ui-controls label.button-like.disabled { opacity: 0.5; cursor: not-allowed; }
+        #ui-controls button:hover:not(:disabled), #ui-controls label.button-like:not(.disabled):hover { opacity: 0.8; }
+        #recording-select { max-width: 150px; } /* Limit width of dropdown */
+        .recording-controls { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; border-top: 1px solid var(--button-border); padding-top: 10px; margin-top: 5px; }
+        .recording-controls .control-group { justify-content: flex-end; } /* Align load/delete buttons */
+        /* Hide actual file input */
+        #load-rec-file-input { display: none; }
+
+
+        #loading-indicator { position: fixed; top: 10px; left: 10px; background-color: rgba(0,0,0,0.7); color: white; padding: 5px 10px; border-radius: 5px; font-size: 12px; z-index: 100; display: none; }
+        .hidden { display: none !important; }
+
+        /* Recording Indicator Style */
+        #record-indicator { display: inline-block; width: 10px; height: 10px; background-color: var(--record-active-color); border-radius: 50%; margin-left: 8px; vertical-align: middle; box-shadow: 0 0 5px 1px var(--record-active-color); animation: pulse 1.5s infinite ease-in-out; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+
+    </style>
+</head>
+<body class="flex flex-col min-h-screen max-h-screen p-4 font-['Inter'] overflow-hidden">
+
+    <div id="ui-controls">
+         <button id="toggle-sheet-music" title="Show/Hide Sheet Music">Show Music</button>
+         <div class="control-group"> <label for="theme-select">Theme:</label> <select name="themes" id="theme-select" class="control-select"> <option value="dark">Dark</option> <option value="light">Light</option> <option value="mexico">Mexico</option> </select> </div>
+         <div class="control-group"> <label for="tone-select">Tone:</label> <select name="tones" id="tone-select" class="control-select"> <option value="FBE" selected>FBE</option> <option value="GCF">GCF</option> </select> </div>
+
+         <div class="recording-controls">
+             <button id="record-btn">Record</button>
+             <button id="play-rec-btn" disabled>Play Recording</button>
+             <button id="save-rec-btn" disabled>Save Recording</button>
+             <button id="download-rec-btn" disabled>Download Recording</button>
+             <input type="file" id="load-rec-file-input" accept=".json,application/json">
+             <label for="load-rec-file-input" id="load-rec-file-label" class="button-like">Upload Recording</label>
+             <div class="control-group">
+                 <label for="recording-select">Load Saved:</label>
+                 <select id="recording-select" class="control-select">
+                     <option value="">-- Select --</option>
+                 </select>
+             </div>
+              <div class="control-group">
+                  <button id="load-rec-btn" disabled>Load</button>
+                  <button id="rename-rec-btn" disabled>Rename</button>
+                  <button id="delete-rec-btn" disabled>Delete</button>
+              </div>
+         </div>
+         </div>
+    <div id="loading-indicator">Loading audio samples...</div>
+
+    <div class="accordion-wrapper">
+        <div class="button-board-container">
+            <div class="button-board">
+                <div class="button-row"> <button class="acc-button" data-button-id="B1">B1</button> <button class="acc-button" data-button-id="B2">B2</button> <button class="acc-button" data-button-id="B3">B3</button> <button class="acc-button" data-button-id="B4">B4</button> <button class="acc-button" data-button-id="B5">B5</button> <button class="acc-button" data-button-id="B6">B6</button> <button class="acc-button" data-button-id="B7">B7</button> <button class="acc-button" data-button-id="B8">B8</button> <button class="acc-button" data-button-id="B9">B9</button> <button class="acc-button" data-button-id="B10">B10</button> <button class="acc-button" data-button-id="B11">B11</button> </div>
+                <div class="button-row"> <button class="acc-button" data-button-id="B12">B12</button> <button class="acc-button" data-button-id="B13">B13</button> <button class="acc-button" data-button-id="B14">B14</button> <button class="acc-button" data-button-id="B15">B15</button> <button class="acc-button" data-button-id="B16">B16</button> <button class="acc-button" data-button-id="B17">B17</button> <button class="acc-button" data-button-id="B18">B18</button> <button class="acc-button" data-button-id="B19">B19</button> <button class="acc-button" data-button-id="B20">B20</button> <button class="acc-button" data-button-id="B21">B21</button> <button class="acc-button" data-button-id="B22">B22</button> <button class="acc-button" data-button-id="B23">B23</button> </div>
+                <div class="button-row"> <button class="acc-button" data-button-id="B24">B24</button> <button class="acc-button" data-button-id="B25">B25</button> <button class="acc-button" data-button-id="B26">B26</button> <button class="acc-button" data-button-id="B27">B27</button> <button class="acc-button" data-button-id="B28">B28</button> <button class="acc-button" data-button-id="B29">B29</button> <button class="acc-button" data-button-id="B30">B30</button> <button class="acc-button" data-button-id="B31">B31</button> <button class="acc-button" data-button-id="B32">B32</button> <button class="acc-button" data-button-id="B33">B33</button> <button class="acc-button" data-button-id="B34">B34</button> </div>
+           </div>
+            <div id="bellows-toggle" title="Hold for PULL sound (Release for PUSH)">P U S H</div>
+        </div>
+
+        <div id="music-sheet-area" class="hidden">
+             <div id="osmd-container">
+                 <p style="padding: 10px; text-align: center; color: var(--text-color-ui-label);">Load a MusicXML file (.xml, .musicxml) to display sheet music.</p>
+                 <div id="custom-highlight"></div>
+             </div>
+             <div id="playback-status">Status: Ready</div>
+             <div id="playback-progress-display">--:-- / --:--</div>
+             <div class="playback-controls">
+                 <input type="file" id="musicxml-file" accept=".musicxml,.xml,.mxl" style="display: none;">
+                 <label for="musicxml-file" class="button">Load MusicXML</label>
+                 <button id="play-btn" disabled>Play (Strict)</button>
+                 <button id="play-sub-btn" disabled>Play All (Subs)</button>
+                 <button id="stop-btn" disabled>Stop</button>
+                 <input type="checkbox" id="loop-checkbox" class="ml-2">
+                 <label for="loop-checkbox" class="loop-label">Loop</label>
+                 <label for="loop-start-measure" class="loop-label">Start:</label>
+                 <input type="number" id="loop-start-measure" class="measure-input" min="1" value="1">
+                 <label for="loop-end-measure" class="loop-label">End:</label>
+                 <input type="number" id="loop-end-measure" class="measure-input" min="1" value="1">
+                 <div class="speed-control">
+                      <label for="speed-slider">Speed:</label>
+                      <input type="range" id="speed-slider" min="0.1" max="2.0" step="0.05" value="1.0">
+                      <span id="speed-display">1.00x</span>
+                  </div>
+             </div>
+        </div>
+    </div>
+
+    <script>
+        console.log("Button Accordion - Loop/Progress Fix v1"); // Log updated version
+
+        // --- Note Mappings (unchanged) ---
+        const fbeNoteMapping = { /* FBE mapping */ 'B1':{push:62,pull:60},'B2':{push:56,pull:54},'B3':{push:59,pull:64},'B4':{push:63,pull:61},'B5':{push:65,pull:66},'B6':{push:68,pull:70},'B7':{push:71,pull:73},'B8':{push:75,pull:78},'B9':{push:77,pull:82},'B10':{push:80,pull:85},'B11':{push:83,pull:90},'B12':{push:67,pull:65},'B13':{push:58,pull:54},'B14':{push:61,pull:59},'B15':{push:64,pull:63},'B16':{push:68,pull:66},'B17':{push:70,pull:71},'B18':{push:73,pull:75},'B19':{push:76,pull:78},'B20':{push:80,pull:83},'B21':{push:82,pull:87},'B22':{push:85,pull:90},'B23':{push:88,pull:95},'B24':{push:72,pull:74},'B25':{push:63,pull:59},'B26':{push:66,pull:64},'B27':{push:69,pull:68},'B28':{push:73,pull:71},'B29':{push:75,pull:76},'B30':{push:78,pull:80},'B31':{push:81,pull:83},'B32':{push:85,pull:88},'B33':{push:87,pull:92},'B34':{push:90,pull:95} };
+        const gcfNoteMapping = { /* GCF mapping */ 'B1':{push:55,pull:59},'B2':{push:57,pull:61},'B3':{push:59,pull:63},'B4':{push:60,pull:65},'B5':{push:62,pull:67},'B6':{push:64,pull:69},'B7':{push:66,pull:71},'B8':{push:67,pull:73},'B9':{push:69,pull:75},'B10':{push:71,pull:77},'B11':{push:72,pull:79},'B12':{push:60,pull:64},'B13':{push:62,pull:66},'B14':{push:64,pull:68},'B15':{push:65,pull:70},'B16':{push:67,pull:72},'B17':{push:69,pull:74},'B18':{push:71,pull:76},'B19':{push:72,pull:78},'B20':{push:74,pull:80},'B21':{push:76,pull:82},'B22':{push:77,pull:84},'B23':{push:79,pull:86},'B24':{push:65,pull:69},'B25':{push:67,pull:71},'B26':{push:69,pull:73},'B27':{push:70,pull:75},'B28':{push:72,pull:77},'B29':{push:74,pull:79},'B30':{push:76,pull:81},'B31':{push:77,pull:83},'B32':{push:79,pull:85},'B33':{push:81,pull:87},'B34':{push:82,pull:88} };
+
+        // --- Global Variables ---
+        let audioContext; let audioBuffers = {};
+        let activeManualSources = {}; let activePlaybackNotes = new Map();
+        let isPointerDown = false; const activeTouches = new Map();
+        let currentBellowsMode = 'push';
+        let currentToneName = 'FBE';
+        let activeNoteMapping = fbeNoteMapping;
+        let osmd; let scoreNotes = []; // Holds parsed notes for strict playback
+        let allParsedNotes = []; // Holds all parsed notes (used for loop time calculation)
+        let isPlaying = false; // Flag for MusicXML playback
+        let tempo = 120; let isScoreLoaded = false;
+        let playbackStartTime = 0; // AudioContext time reference, adjusted for loop start
+        let visualTimeoutIds = [];
+        let playbackSpeedFactor = 1.0;
+        let progressUpdateId = null; // For MusicXML progress
+        let parsedLastNoteEndTime1x = 0; // End time of the *entire piece* at 1x speed
+        let currentLoopStartTime1x = 0; // Start time of the current playback segment (loop/full) at 1x
+        let currentLoopEndTime1x = 0; // End time of the current playback segment (loop/full) at 1x
+        let totalMeasures = 0;
+        // --- Recorder State (unchanged) ---
+        let isRecording = false;
+        let recordingStartTime = 0;
+        let recordedEvents = [];
+        let isRecordingPlayback = false;
+        let recordingPlaybackStartTime = 0;
+        let recordingVisualTimeoutIds = [];
+        let recordingProgressUpdateId = null;
+        let recordingTotalDurationSeconds = 0;
+        const RECORDINGS_INDEX_KEY = 'accordionRecordingsIndex';
+        const RECORDING_PREFIX = 'accordionRecording_';
+        // --------------------
+
+        // Element References (initialized in DOMContentLoaded)
+        let loadingIndicator, board, bellowsToggle, toneSelect, themeSelect, body,
+            musicSheetArea, toggleSheetBtn, osmdContainer, fileInput, playBtn, playSubBtn, stopBtn, loopCheckbox,
+            loopStartMeasureInput, loopEndMeasureInput,
+            recordBtn, playRecBtn, saveRecBtn, downloadRecBtn, // Recorder buttons
+            recordingSelect, loadRecBtn, deleteRecBtn, renameRecBtn,
+            loadRecFileInput,
+            statusDiv, speedSlider, speedDisplay, buttons, customHighlight, progressDisplayElement;
+
+        // --- Function Definitions ---
+
+        // Generates note URLs (unchanged)
+        function generateButtonNoteURLs(toneName) { const urls = {}; for (let i = 1; i <= 34; i++) { const buttonId = `B${i}`; urls[buttonId] = { pushUrl: `${toneName}/push/b${i}.wav`, pullUrl: `${toneName}/pull/b${i}.wav` }; } return urls; }
+        // Initializes the Web Audio API context (unchanged)
+        function initAudioContext() { if (!audioContext) { try { audioContext = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: "interactive" }); console.log(`AudioContext created. State: ${audioContext.state}`); if (audioContext.state === 'running') { loadSamplesForTone(currentToneName); } else { console.log("AudioContext suspended. Waiting for user interaction."); document.addEventListener('click', resumeAudioContext, { once: true, capture: true }); document.addEventListener('touchstart', resumeAudioContext, { once: true, capture: true }); } } catch (e) { console.error("Web Audio API is not supported", e); alert("Web Audio API is not supported in this browser."); loadingIndicator.textContent = "Error: Web Audio Not Supported"; loadingIndicator.style.display = 'block'; } } }
+        // Function to resume audio context (unchanged)
+        function resumeAudioContext() { if (audioContext && audioContext.state === 'suspended') { audioContext.resume().then(() => { console.log("AudioContext resumed successfully."); if (Object.keys(audioBuffers).length === 0) { loadSamplesForTone(currentToneName); } }).catch(e => console.error("Error resuming AudioContext:", e)); } document.removeEventListener('click', resumeAudioContext, { capture: true }); document.removeEventListener('touchstart', resumeAudioContext, { capture: true }); }
+        // Loads audio samples for the selected tone (unchanged)
+        async function loadSamplesForTone(toneName) { /* ... */ if (!audioContext || audioContext.state !== 'running') { console.warn(`Cannot load samples for ${toneName}, AudioContext not running. State: ${audioContext?.state}`); if (audioContext && audioContext.state === 'suspended') { resumeAudioContext(); } return; } const buttonURLs = generateButtonNoteURLs(toneName); loadingIndicator.textContent = `Loading ${toneName} samples...`; loadingIndicator.style.display = 'block'; console.log(`Starting sample loading for tone: ${toneName}...`); audioBuffers = {}; let loadedCount = 0; let failedCount = 0; const totalSamples = Object.keys(buttonURLs).length * 2; const loadPromises = Object.entries(buttonURLs).flatMap(([buttonId, urls]) => [ fetch(urls.pushUrl).then(response => { if (!response.ok) throw new Error(`HTTP error! status: ${response.status} for ${urls.pushUrl}`); return response.arrayBuffer(); }).then(arrayBuffer => audioContext.decodeAudioData(arrayBuffer)).then(decodedBuffer => { if (!audioBuffers[buttonId]) audioBuffers[buttonId] = { push: null, pull: null }; audioBuffers[buttonId].push = decodedBuffer; loadedCount++; }).catch(error => { console.warn(`Failed to load/decode PUSH sample for ${buttonId} (${urls.pushUrl}):`, error.message); if (!audioBuffers[buttonId]) audioBuffers[buttonId] = { push: null, pull: null }; failedCount++; }), fetch(urls.pullUrl).then(response => { if (!response.ok) throw new Error(`HTTP error! status: ${response.status} for ${urls.pullUrl}`); return response.arrayBuffer(); }).then(arrayBuffer => audioContext.decodeAudioData(arrayBuffer)).then(decodedBuffer => { if (!audioBuffers[buttonId]) audioBuffers[buttonId] = { push: null, pull: null }; audioBuffers[buttonId].pull = decodedBuffer; loadedCount++; }).catch(error => { console.warn(`Failed to load/decode PULL sample for ${buttonId} (${urls.pullUrl}):`, error.message); if (!audioBuffers[buttonId]) audioBuffers[buttonId] = { push: null, pull: null }; failedCount++; }) ]); await Promise.allSettled(loadPromises); console.log(`Loading finished for ${toneName}. Loaded: ${loadedCount}, Failed: ${failedCount}, Total Expected: ${totalSamples}`); loadingIndicator.textContent = `Audio loaded (${toneName})`; setTimeout(() => { loadingIndicator.style.display = 'none'; }, 2500); if (audioContext.state === 'suspended') { console.warn("AudioContext suspended after loading samples."); } }
+
+        // Plays a sound manually, logs event, handles playback interruption (unchanged)
+        function playManualSound(id, isPlaybackCall = false, isBellowsChangeRestart = false) { if (!isPlaybackCall && !isBellowsChangeRestart && (isPlaying || isRecordingPlayback)) { console.log("User interaction detected, stopping playback."); if (isPlaying) stopPlayback(); if (isRecordingPlayback) stopRecordingPlayback(); } if (!audioContext || audioContext.state !== 'running') { console.warn("AudioContext not running, cannot play sound."); resumeAudioContext(); return; } if (isRecording && !isPlaybackCall && !isBellowsChangeRestart) { const time = audioContext.currentTime - recordingStartTime; recordedEvents.push({ time: time, type: 'press', id: id, mode: currentBellowsMode }); console.log(`Rec: Press ${id} (${currentBellowsMode}) at ${time.toFixed(3)}s`); } const bufferData = audioBuffers[id]; const buffer = bufferData?.[currentBellowsMode]; if (!buffer) { console.warn(`Audio buffer not found for button ${id} in ${currentBellowsMode} mode.`); return; } const immediateStop = !(isPlaybackCall || isBellowsChangeRestart); stopManualSound(id, immediateStop, isBellowsChangeRestart); const now = audioContext.currentTime; const gainNode = audioContext.createGain(); gainNode.gain.setValueAtTime(0.6, now); const source = audioContext.createBufferSource(); source.buffer = buffer; source.loop = false; if (buffer.duration > 1.0 && !isPlaybackCall && !isBellowsChangeRestart && !isPlaying && !isRecordingPlayback) { source.loop = true; source.loopStart = 1.0; source.loopEnd = buffer.duration; } source.connect(gainNode); gainNode.connect(audioContext.destination); source.start(now); activeManualSources[id] = { source, gainNode }; }
+        // Stops a manually triggered sound, logs event if recording & NOT immediate/internal (unchanged)
+        function stopManualSound(id, immediate = false, internalRestart = false) { if (isRecording && !immediate && !internalRestart && activeManualSources[id]) { const time = audioContext.currentTime - recordingStartTime; recordedEvents.push({ time: time, type: 'release', id: id }); console.log(`Rec: Release ${id} at ${time.toFixed(3)}s`); } if (audioContext && activeManualSources[id]) { const { source, gainNode } = activeManualSources[id]; const now = audioContext.currentTime; gainNode.gain.cancelScheduledValues(now); if (immediate) { try { source.stop(now); } catch (e) {} } else { gainNode.gain.setValueAtTime(gainNode.gain.value, now); gainNode.gain.linearRampToValueAtTime(0.0001, now + 0.05); try { source.stop(now + 0.06); } catch (e) {} } delete activeManualSources[id]; } }
+        // Handles button press (unchanged)
+        function handlePress(button) { if (!button || !button.classList.contains('acc-button')) return; const buttonId = button.dataset.buttonId; if (!audioContext || audioContext.state !== 'running') { console.log("Audio context not ready, attempting to initialize/resume..."); resumeAudioContext(); return; } if (!button.classList.contains('pressed')) { button.classList.add('pressed'); playManualSound(buttonId); } }
+        // Handles button release (unchanged)
+        function handleRelease(button) { if (!button || !button.classList.contains('acc-button')) return; const buttonId = button.dataset.buttonId; if (button.classList.contains('pressed')) { button.classList.remove('pressed'); stopManualSound(buttonId); } }
+        // Handles the end of a touch interaction (unchanged)
+        function handleTouchEndOrCancel(event) { event.preventDefault(); for (const touch of event.changedTouches) { const endedButton = activeTouches.get(touch.identifier); if (endedButton) { handleRelease(endedButton); } activeTouches.delete(touch.identifier); } if (event.touches.length === 0) { isPointerDown = false; } }
+
+        // Sets the bellows mode, logs event, restarts notes (unchanged)
+        function setBellowsMode(mode, isInitial = false) { const newMode = (mode === 'pull') ? 'pull' : 'push'; if (!isInitial && newMode === currentBellowsMode) return; if (isRecording && !isInitial) { const time = audioContext.currentTime - recordingStartTime; recordedEvents.push({ time: time, type: 'bellows', mode: newMode }); console.log(`Rec: Bellows ${newMode} at ${time.toFixed(3)}s`); } currentBellowsMode = newMode; if (currentBellowsMode === 'pull') { bellowsToggle.classList.add('active'); bellowsToggle.textContent = 'P U L L'; bellowsToggle.title = "Release for PUSH sound"; } else { bellowsToggle.classList.remove('active'); bellowsToggle.textContent = 'P U S H'; bellowsToggle.title = "Hold for PULL sound"; } if (!isInitial) { const heldButtonIds = new Set(); buttons.forEach(btn => { if (btn.classList.contains('pressed')) { heldButtonIds.add(btn.dataset.buttonId); } }); activeTouches.forEach(btn => { heldButtonIds.add(btn.dataset.buttonId); }); heldButtonIds.forEach(id => { playManualSound(id, false, true); }); } }
+        // Set Bellows Mode During Recording Playback (calls pressButtonVisually) (unchanged)
+        function setPlaybackBellowsMode(newMode) { if (newMode === currentBellowsMode) return; console.log(`Recording Playback: Setting bellows to ${newMode}`); currentBellowsMode = newMode; if (currentBellowsMode === 'pull') { bellowsToggle.classList.add('active'); bellowsToggle.textContent = 'P U L L'; } else { bellowsToggle.classList.remove('active'); bellowsToggle.textContent = 'P U S H'; } const currentlyPlayingIds = Object.keys(activeManualSources); currentlyPlayingIds.forEach(id => { console.log(`  Restarting held note ${id} for bellows change during playback`); playManualSound(id, true); pressButtonVisually(id, currentBellowsMode, false); }); }
+
+        // Parses score data (unchanged logic, still populates global parsedLastNoteEndTime1x and totalMeasures)
+        function parseScoreData(osmdInstance, noteMapping, substituteUnplayable = false) { console.log(`Parsing score data for tone: ${currentToneName} (Substitute=${substituteUnplayable})`); const notesForPlayback = []; parsedLastNoteEndTime1x = 0; totalMeasures = 0; if (!osmdInstance || !osmdInstance.Sheet || !osmdInstance.cursor) { console.error("OSMD Sheet data or cursor not available for parsing."); return notesForPlayback; } if (!noteMapping) { console.error("No note mapping provided to parseScoreData."); return notesForPlayback; } const pushMidiToButtonId = {}; const pullMidiToButtonId = {}; const allPlayableMidiNotes = new Set(); for (const [buttonId, notes] of Object.entries(noteMapping)) { if (notes.push !== null && notes.push !== undefined) { allPlayableMidiNotes.add(notes.push); if (!pushMidiToButtonId[notes.push]) { pushMidiToButtonId[notes.push] = buttonId; } } if (notes.pull !== null && notes.pull !== undefined) { allPlayableMidiNotes.add(notes.pull); if (!pullMidiToButtonId[notes.pull]) { pullMidiToButtonId[notes.pull] = buttonId; } } } const sortedPlayableMidiNotes = Array.from(allPlayableMidiNotes).sort((a, b) => a - b); try { let currentBpm = 120; if (osmdInstance.Sheet.SheetPlaybackSetting?.tempo) { currentBpm = osmdInstance.Sheet.SheetPlaybackSetting.tempo; } else if (osmdInstance.Sheet.HasBPMInfos && osmdInstance.Sheet.BPMInfos.length > 0) { currentBpm = osmdInstance.Sheet.BPMInfos[0].Tempo; } tempo = currentBpm; console.log("Tempo determined:", tempo, "BPM"); const quarterNoteDurationSeconds = 60.0 / tempo; totalMeasures = osmdInstance.Sheet.SourceMeasures.length; console.log("Total Measures:", totalMeasures); if(loopEndMeasureInput) loopEndMeasureInput.max = totalMeasures; const cursor = osmdInstance.cursor; cursor.reset(); let lastNoteEndTime = 0; while (!cursor.Iterator.EndReached) { const voices = cursor.VoicesUnderCursor(); voices.forEach(voiceEntry => { voiceEntry.Notes.forEach(note => { const measureNumber = note.SourceMeasure?.MeasureNumber; if (!note.isRest() && note.Pitch && measureNumber !== undefined) { const startTimeStamp = note.getAbsoluteTimestamp().RealValue; const duration = note.Length.RealValue; let originalMidiPitch = null; let rawHalfTone = note.Pitch.halfTone; if (rawHalfTone !== undefined && typeof rawHalfTone === 'number') { originalMidiPitch = rawHalfTone + 12; } else { console.warn("Could not get valid note.Pitch.halfTone at timestamp:", startTimeStamp); return; } let chosenButtonId = undefined; let chosenDirection = undefined; let finalMidiPitch = originalMidiPitch; let isSubstituted = false; const midiPitchStr = String(originalMidiPitch); if (pushMidiToButtonId[midiPitchStr] !== undefined) { chosenButtonId = pushMidiToButtonId[midiPitchStr]; chosenDirection = 'push'; } else if (pullMidiToButtonId[midiPitchStr] !== undefined) { chosenButtonId = pullMidiToButtonId[midiPitchStr]; chosenDirection = 'pull'; } if (chosenButtonId === undefined && substituteUnplayable) { isSubstituted = true; /* console.log(`Note MIDI ${originalMidiPitch} unplayable, finding substitute...`); */ let minDiff = Infinity; let closestMidi = null; for (const playableMidi of sortedPlayableMidiNotes) { const diff = Math.abs(originalMidiPitch - playableMidi); if (diff < minDiff) { minDiff = diff; closestMidi = playableMidi; } else if (diff === minDiff) { if (playableMidi < closestMidi) { closestMidi = playableMidi; } } } if (closestMidi !== null) { finalMidiPitch = closestMidi; const finalMidiPitchStr = String(finalMidiPitch); if (pushMidiToButtonId[finalMidiPitchStr] !== undefined) { chosenButtonId = pushMidiToButtonId[finalMidiPitchStr]; chosenDirection = 'push'; } else if (pullMidiToButtonId[finalMidiPitchStr] !== undefined) { chosenButtonId = pullMidiToButtonId[finalMidiPitchStr]; chosenDirection = 'pull'; } /* console.log(`  Substituting with MIDI ${finalMidiPitch} -> ${chosenButtonId} ${chosenDirection}`); */ } else { console.warn(`Could not find any substitute for MIDI ${originalMidiPitch}`); chosenButtonId = undefined; } } if (chosenButtonId !== undefined) { const startTimeSec = startTimeStamp * quarterNoteDurationSeconds; const durationSec = duration * quarterNoteDurationSeconds; notesForPlayback.push({ startTimeSeconds: startTimeSec, durationSeconds: durationSec, buttonId: chosenButtonId, direction: chosenDirection, midiNote: finalMidiPitch, originalMidiNote: originalMidiPitch, isSubstituted: isSubstituted, measureNumber: measureNumber, osmdNote: note }); lastNoteEndTime = Math.max(lastNoteEndTime, startTimeSec + durationSec); } else if (!substituteUnplayable) { /* console.log(`Note MIDI ${originalMidiPitch} (key "${midiPitchStr}", from ${rawHalfTone}+12) at ${startTimeStamp} not found on map for ${currentToneName} (Push or Pull). Skipping.`); */ } } }); }); cursor.next(); } osmd.cursor.hide(); parsedLastNoteEndTime1x = lastNoteEndTime; console.log(`Parsing complete. Found ${notesForPlayback.length} notes (${substituteUnplayable ? 'incl. substitutions' : 'strict mapping'}). Estimated duration @ 1x: ${parsedLastNoteEndTime1x.toFixed(2)}s`); } catch (error) { console.error("Error during score parsing:", error); statusDiv.textContent = "Error parsing score data."; return []; } notesForPlayback.sort((a, b) => a.startTimeSeconds - b.startTimeSeconds); return notesForPlayback; }
+
+        // Visually presses a button element (unchanged)
+        function pressButtonVisually(buttonId, direction, isSubstituted) { const btnElement = document.querySelector(`.acc-button[data-button-id="${buttonId}"]`); if(btnElement) { btnElement.classList.remove('pull-active', 'push-active', 'sub-active'); btnElement.classList.add('pressed'); if (isSubstituted) { btnElement.classList.add('sub-active'); } else if (direction === 'pull') { btnElement.classList.add('pull-active'); } else if (direction === 'push') { btnElement.classList.add('push-active'); } } else { console.warn(`pressButtonVisually: Could not find button ${buttonId}`); } }
+        // Visually releases a button element (unchanged)
+        function releaseButtonVisually(buttonId) { const btnElement = document.querySelector(`.acc-button[data-button-id="${buttonId}"]`); if (btnElement) { btnElement.classList.remove('pull-active'); btnElement.classList.remove('push-active'); btnElement.classList.remove('sub-active'); const isManuallyHeld = isPointerDown && btnElement.matches(':hover') || Array.from(activeTouches.values()).includes(btnElement); if (!isManuallyHeld) { btnElement.classList.remove('pressed'); } } }
+        // Stops the automated MusicXML playback (unchanged)
+        function stopPlayback() { if (!isPlaying && visualTimeoutIds.length === 0) return; console.log("Stopping MusicXML playback..."); isPlaying = false; if (progressUpdateId) { cancelAnimationFrame(progressUpdateId); progressUpdateId = null; } visualTimeoutIds.forEach(clearTimeout); visualTimeoutIds = []; const now = audioContext.currentTime; activePlaybackNotes.forEach((noteInfo, key) => { try { noteInfo.gainNode.gain.cancelScheduledValues(now); noteInfo.source.stop(now); } catch(e) {} }); activePlaybackNotes.clear(); buttons.forEach(btn => releaseButtonVisually(btn.dataset.buttonId)); if (customHighlight) { customHighlight.style.display = 'none'; } if (osmd && osmd.cursor) { try { osmd.cursor.hide(); } catch(e) { console.warn("Error hiding cursor on stop:", e); } } playBtn.disabled = !isScoreLoaded || scoreNotes.length === 0; // Re-enable based on parsed strict notes
+         playSubBtn.disabled = !isScoreLoaded || allParsedNotes.length === 0; // Re-enable based on any parsed notes
+         stopBtn.disabled = true; statusDiv.textContent = "Playback stopped."; if (progressDisplayElement) { // Reset progress based on full duration
+            const totalDurationAudio = parsedLastNoteEndTime1x / playbackSpeedFactor;
+            updateProgressIndicator(0, totalDurationAudio);
+        } }
+
+        // Format time helper (unchanged)
+        function formatTime(totalSeconds) { if (isNaN(totalSeconds) || !isFinite(totalSeconds) || totalSeconds < 0) { return "--:--"; } const minutes = Math.floor(totalSeconds / 60); const seconds = Math.floor(totalSeconds % 60); return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`; }
+        // Update progress display element (unchanged)
+        function updateProgressIndicator(elapsedSeconds, totalSeconds) { if (!progressDisplayElement) return; const elapsedFormatted = formatTime(elapsedSeconds); const totalFormatted = formatTime(totalSeconds); progressDisplayElement.textContent = `${elapsedFormatted} / ${totalFormatted}`; }
+
+        // *** MODIFIED: MusicXML Playback progress update loop ***
+        // Uses global loop start/end times and adjusted playbackStartTime
+        function playbackProgressLoop() {
+            if (!isPlaying) { progressUpdateId = null; return; }
+
+            // Calculate total duration of the current segment (loop or full piece) in audio time
+            const segmentDurationAudio = (currentLoopEndTime1x - currentLoopStartTime1x) / playbackSpeedFactor;
+
+            // Calculate elapsed time since the effective start of this segment in audio time
+            // playbackStartTime is already adjusted in startPlayback
+            let elapsedAudioTime = audioContext.currentTime - playbackStartTime;
+
+            // Ensure elapsed time doesn't exceed segment duration due to timing variance or loop restart delay
+            elapsedAudioTime = Math.max(0, Math.min(elapsedAudioTime, segmentDurationAudio));
+
+            // Update the display to show progress within the current segment
+            updateProgressIndicator(elapsedAudioTime, segmentDurationAudio);
+
+            progressUpdateId = requestAnimationFrame(playbackProgressLoop);
+        }
+
+
+        // *** MODIFIED: Shared Playback Start Logic for MusicXML ***
+        // Includes fixes for loop timing, progress display, and loop delay
+        function startPlayback(substitute, loopStartMeasure = null, loopEndMeasure = null) {
+            console.log(`Play button clicked (Substitute=${substitute}, Loop: ${loopStartMeasure}-${loopEndMeasure})`);
+            if (!osmdContainer || !customHighlight) { console.error("Cannot start playback: crucial elements missing!"); return; }
+            if (!isScoreLoaded) { console.warn("No score loaded."); return; }
+            if (!audioContext || audioContext.state !== 'running') { console.warn("AudioContext not ready."); resumeAudioContext(); statusDiv.textContent = "Audio not ready. Click Play again."; return; }
+
+            // Ensure score data is parsed (re-parse if needed, maybe redundant but safe)
+            if (!osmd || !osmd.Sheet || !osmd.cursor) { console.error("OSMD not ready."); statusDiv.textContent = "Error: Sheet music display not ready."; return; }
+            allParsedNotes = parseScoreData(osmd, activeNoteMapping, true); // Get all notes for timing/subs
+            scoreNotes = parseScoreData(osmd, activeNoteMapping, false); // Get strict notes
+            if (totalMeasures === 0) { console.error("Score parsing failed or returned no measures."); statusDiv.textContent = "Error: Could not parse score measures."; return; }
+
+            // Determine loop range
+            let actualStartMeasure = 1;
+            let actualEndMeasure = totalMeasures;
+            let isLooping = loopCheckbox && loopCheckbox.checked;
+            let explicitLoopArgs = loopStartMeasure !== null && loopEndMeasure !== null; // Used for recursive calls
+
+            if (isLooping && !explicitLoopArgs) {
+                const inputStart = parseInt(loopStartMeasureInput.value, 10);
+                const inputEnd = parseInt(loopEndMeasureInput.value, 10);
+                if (!isNaN(inputStart) && !isNaN(inputEnd) && inputStart >= 1 && inputStart <= totalMeasures && inputEnd >= inputStart && inputEnd <= totalMeasures) {
+                    actualStartMeasure = inputStart;
+                    actualEndMeasure = inputEnd;
+                    console.log(`Looping measures ${actualStartMeasure} to ${actualEndMeasure}`);
+                } else {
+                    console.warn("Invalid loop measures provided, looping entire piece instead.");
+                    isLooping = true; // Force loop if inputs invalid but checkbox checked
+                    actualStartMeasure = 1;
+                    actualEndMeasure = totalMeasures;
+                    if(loopStartMeasureInput) loopStartMeasureInput.value = actualStartMeasure;
+                    if(loopEndMeasureInput) loopEndMeasureInput.value = actualEndMeasure;
+                }
+            } else if (explicitLoopArgs) {
+                // This case happens on recursive loop calls
+                actualStartMeasure = loopStartMeasure;
+                actualEndMeasure = loopEndMeasure;
+                isLooping = true; // Ensure looping is set for recursive calls
+                console.log(`Restarting loop for measures ${actualStartMeasure} to ${actualEndMeasure}`);
+            } else {
+                // Not looping
+                isLooping = false;
+                actualStartMeasure = 1;
+                actualEndMeasure = totalMeasures;
+            }
+
+            // Filter notes based on substitution and loop range
+            const notesToPlay = substitute ? allParsedNotes : scoreNotes;
+            const notesInLoop = notesToPlay.filter(note => note.measureNumber >= actualStartMeasure && note.measureNumber <= actualEndMeasure);
+
+            if (notesInLoop.length === 0) {
+                const modeText = substitute ? ' (with substitutions)' : ' (strict mapping)';
+                console.warn(`No notes found in measure range ${actualStartMeasure}-${actualEndMeasure} for ${currentToneName}${modeText}.`);
+                statusDiv.textContent = `No notes in measures ${actualStartMeasure}-${actualEndMeasure}.`;
+                playBtn.disabled = !isScoreLoaded || scoreNotes.length === 0;
+                playSubBtn.disabled = !isScoreLoaded || allParsedNotes.length === 0;
+                stopBtn.disabled = true;
+                updateProgressIndicator(0, parsedLastNoteEndTime1x / playbackSpeedFactor); // Show full duration
+                return;
+            }
+            console.log(`Playing ${notesInLoop.length} notes from measures ${actualStartMeasure}-${actualEndMeasure}.`);
+
+            // --- Calculate precise loop/segment times (1x speed) ---
+            currentLoopStartTime1x = notesInLoop[0].startTimeSeconds; // Start time of first note in selection
+
+            if (isLooping) {
+                // Find the start time of the first note AFTER the loop end measure using ALL parsed notes
+                const firstNoteAfterLoop = allParsedNotes
+                    .filter(note => note.measureNumber > actualEndMeasure)
+                    .sort((a, b) => a.startTimeSeconds - b.startTimeSeconds)[0]; // Find earliest note after loop end
+
+                if (firstNoteAfterLoop) {
+                    currentLoopEndTime1x = firstNoteAfterLoop.startTimeSeconds;
+                } else {
+                    // If no notes after loop, use the end time of the whole piece
+                    currentLoopEndTime1x = parsedLastNoteEndTime1x;
+                }
+                 // Ensure end time is at least the start time (e.g., single measure loop)
+                 currentLoopEndTime1x = Math.max(currentLoopEndTime1x, currentLoopStartTime1x);
+                 // If loopEndTime is still <= start (e.g. loop end measure has no notes after it), fallback
+                 if (currentLoopEndTime1x <= currentLoopStartTime1x) {
+                     console.warn("Could not determine precise loop end time, using full piece end time.");
+                      currentLoopEndTime1x = parsedLastNoteEndTime1x;
+                 }
+            } else {
+                // Not looping, use the effective start/end of the whole piece
+                currentLoopStartTime1x = 0; // Start from beginning
+                currentLoopEndTime1x = parsedLastNoteEndTime1x; // End at the end
+            }
+            console.log(`Segment Time Range (1x): ${currentLoopStartTime1x.toFixed(3)}s - ${currentLoopEndTime1x.toFixed(3)}s`);
+
+
+            // --- Stop Previous Playback & Reset State ---
+            if (isPlaying) { // If already playing (e.g., loop restart), clear old timeouts/audio
+                console.log("Clearing previous playback state for restart/loop.");
+                if (progressUpdateId) cancelAnimationFrame(progressUpdateId);
+                visualTimeoutIds.forEach(clearTimeout);
+                visualTimeoutIds = [];
+                const now = audioContext.currentTime;
+                activePlaybackNotes.forEach((noteInfo) => { try { noteInfo.gainNode.gain.cancelScheduledValues(now); noteInfo.source.stop(now); } catch(e) {} });
+                activePlaybackNotes.clear();
+                buttons.forEach(btn => releaseButtonVisually(btn.dataset.buttonId)); // Clear visual state
+            } else {
+                // If starting fresh, stop any manual sounds
+                Object.keys(activeManualSources).forEach(id => stopManualSound(id, true));
+                buttons.forEach(handleRelease);
+                activeManualSources = {};
+                activeTouches.clear();
+                isPointerDown = false;
+            }
+
+            // --- Adjust playbackStartTime based on loop start offset ---
+            playbackStartTime = audioContext.currentTime - (currentLoopStartTime1x / playbackSpeedFactor);
+
+            console.log(`Starting playback sequence (Speed: ${playbackSpeedFactor.toFixed(2)}x, Substitute: ${substitute}, Loop: ${isLooping ? `${actualStartMeasure}-${actualEndMeasure}` : 'Off'})...`);
+            isPlaying = true;
+            playBtn.disabled = true; // Disable both play buttons while playing
+            playSubBtn.disabled = true;
+            stopBtn.disabled = false;
+            statusDiv.textContent = isLooping ? `Looping ${actualStartMeasure}-${actualEndMeasure}...` : "Playing...";
+            visualTimeoutIds = []; // Ensure clean slate for timeouts
+            activePlaybackNotes.clear(); // Ensure clean slate for audio nodes
+
+            // Reset and hide OSMD cursor
+            try { osmd.cursor.reset(); osmd.cursor.hide(); }
+            catch (e) { console.error("Error resetting/hiding OSMD cursor:", e); }
+
+            let lastNoteAudioEndTime = playbackStartTime; // Track the actual audio end time for natural stop
+
+            // --- Schedule Audio & Visuals ---
+            notesInLoop.forEach((noteInfo) => {
+                if (!noteInfo.buttonId || !noteInfo.direction) {
+                    console.warn(`Skipping note OriginalMIDI ${noteInfo.originalMidiNote} - missing button or direction.`);
+                    return;
+                }
+                if (noteInfo.isSubstituted && substitute) { // Only log substitution if in substitute mode
+                    // console.log(`Playing substituted note: Original MIDI ${noteInfo.originalMidiNote} -> Mapped MIDI ${noteInfo.midiNote} (${noteInfo.buttonId} ${noteInfo.direction})`);
+                }
+
+                // Calculate absolute audio times based on adjusted playbackStartTime
+                const absoluteStartTime = playbackStartTime + (noteInfo.startTimeSeconds / playbackSpeedFactor);
+                const adjustedDurationSeconds = noteInfo.durationSeconds / playbackSpeedFactor;
+                const absoluteEndTime = absoluteStartTime + adjustedDurationSeconds;
+
+                lastNoteAudioEndTime = Math.max(lastNoteAudioEndTime, absoluteEndTime); // Update last audio event time
+
+                const bufferData = audioBuffers[noteInfo.buttonId];
+                const buffer = bufferData?.[noteInfo.direction];
+
+                if (buffer) {
+                    try {
+                        const gainNode = audioContext.createGain();
+                        gainNode.gain.setValueAtTime(0.6, absoluteStartTime); // Start at full volume
+                        const source = audioContext.createBufferSource();
+                        source.buffer = buffer;
+                        source.loop = false; // Don't loop individual notes during playback
+                        source.connect(gainNode);
+                        gainNode.connect(audioContext.destination);
+                        source.start(absoluteStartTime);
+
+                        // Schedule fade out and stop
+                        const fadeDuration = 0.05; // 50ms fade
+                        const rampStartTime = Math.max(absoluteStartTime, absoluteEndTime - fadeDuration); // Start fade near the end
+                        gainNode.gain.setValueAtTime(0.6, rampStartTime); // Ensure volume is correct before ramp
+                        gainNode.gain.linearRampToValueAtTime(0.0001, absoluteEndTime); // Fade to near zero
+                        source.stop(absoluteEndTime + 0.01); // Stop shortly after fade completes
+
+                        const noteKey = `${noteInfo.startTimeSeconds}-${noteInfo.originalMidiNote}-${noteInfo.buttonId}-${absoluteStartTime}`;
+                        activePlaybackNotes.set(noteKey, { source, gainNode, buttonId: noteInfo.buttonId });
+                        source.onended = () => { activePlaybackNotes.delete(noteKey); };
+
+                    } catch (e) { console.error(`Error scheduling audio for button ${noteInfo.buttonId}:`, e); }
+                } else { console.warn(`Buffer not found for playback: Button ${noteInfo.buttonId} in ${noteInfo.direction} mode`); }
+
+                // Schedule Visuals (Press, Release, Highlight)
+                const startDelayMs = Math.max(0, (absoluteStartTime - audioContext.currentTime) * 1000);
+                const endDelayMs = Math.max(0, (absoluteEndTime - audioContext.currentTime) * 1000);
+
+                visualTimeoutIds.push(setTimeout(() => pressButtonVisually(noteInfo.buttonId, noteInfo.direction, noteInfo.isSubstituted), startDelayMs));
+                visualTimeoutIds.push(setTimeout(() => releaseButtonVisually(noteInfo.buttonId), endDelayMs));
+
+                // Schedule Custom Highlight Update
+                visualTimeoutIds.push(setTimeout(() => {
+                    if (!isPlaying || !osmd || !osmd.cursor || !customHighlight) return;
+                    try {
+                        // Attempt to position highlight based on OSMD's internal cursor image (may be unreliable)
+                        const cursorImg = document.getElementById('cursorImg-0');
+                        if (cursorImg && cursorImg.style.display !== 'none') {
+                            const topPos = cursorImg.style.top;
+                            const leftPos = cursorImg.style.left;
+                            if (topPos && leftPos) {
+                                customHighlight.style.top = topPos;
+                                const highlightWidth = 10; // Width of the highlight bar
+                                customHighlight.style.left = `${parseFloat(leftPos) - (highlightWidth / 2)}px`; // Center highlight
+                                customHighlight.style.height = cursorImg.style.height || '50px'; // Match height if possible
+                                customHighlight.style.display = 'block';
+                            } else { customHighlight.style.display = 'none'; }
+                        } else { customHighlight.style.display = 'none'; }
+
+                        // Advance the hidden OSMD cursor (might help positioning on next iteration)
+                        // This might not be perfectly synced visually, hence the custom highlight
+                        if (!osmd.cursor.Iterator.EndReached) { osmd.cursor.next(); }
+
+                    } catch (e) { console.error("Error positioning custom highlight or advancing cursor:", e); customHighlight.style.display = 'none'; }
+                }, startDelayMs));
+
+                 // Hide highlight slightly after note ends (or immediately if duration is very short)
+                visualTimeoutIds.push(setTimeout(() => {
+                    if (customHighlight) { customHighlight.style.display = 'none'; }
+                }, endDelayMs + 50)); // Hide slightly after note end visual
+            });
+
+
+            // --- Start Progress Indicator Loop ---
+            const initialSegmentDurationAudio = (currentLoopEndTime1x - currentLoopStartTime1x) / playbackSpeedFactor;
+            updateProgressIndicator(0, initialSegmentDurationAudio); // Show 0 / segment duration initially
+            if (progressUpdateId) cancelAnimationFrame(progressUpdateId); // Clear previous loop
+            progressUpdateId = requestAnimationFrame(playbackProgressLoop); // Start the updated loop
+
+
+            // --- MODIFIED: Schedule loop restart OR natural end ---
+            if (notesInLoop.length > 0) { // Only schedule if there were notes processed
+                if (isLooping) {
+                    // Calculate loop duration based on the determined metrical start/end times
+                    const loopDurationAudioSeconds = (currentLoopEndTime1x - currentLoopStartTime1x) / playbackSpeedFactor;
+                    const loopRestartDelayMs = Math.max(10, loopDurationAudioSeconds * 1000); // Use calculated duration, ensure minimum delay
+
+                    console.log(`Scheduling loop restart in ${loopRestartDelayMs.toFixed(0)}ms`);
+
+                    visualTimeoutIds.push(setTimeout(() => {
+                        // Re-check flags inside timeout, user might have stopped playback
+                        if (isPlaying && isLooping) {
+                            console.log("Looping section (metrical)...");
+                            // startPlayback handles clearing previous timeouts/audio
+                            startPlayback(substitute, actualStartMeasure, actualEndMeasure);
+                        }
+                    }, loopRestartDelayMs));
+
+                } else {
+                    // Not looping: Schedule stop based on when the *last audio sample* finishes playing + buffer
+                    // Use the tracked lastNoteAudioEndTime
+                    const naturalEndDelayMs = Math.max(0, (lastNoteAudioEndTime - audioContext.currentTime) * 1000) + 100; // 100ms buffer after last sound stops
+
+                    console.log(`Scheduling natural stop in ${naturalEndDelayMs.toFixed(0)}ms`);
+
+                     visualTimeoutIds.push(setTimeout(() => {
+                         // Re-check flags inside timeout
+                         if (isPlaying && !isLooping) { // Check !isLooping here
+                              console.log("Playback finished naturally.");
+                              stopPlayback();
+                         }
+                     }, naturalEndDelayMs));
+                }
+            } else {
+                 // If there were no notes found in the loop section initially, stop immediately.
+                 console.log("Stopping playback as no notes were found in the selected range.");
+                 stopPlayback();
+            }
+        } // End startPlayback function
+
+
+        // Start Recording Playback (unchanged)
+        function startRecordingPlayback(loop = false) { if (isRecording || isPlaying || isRecordingPlayback) { console.warn("Cannot start recording playback while recording or other playback is active."); return; } if (recordedEvents.length === 0) { console.warn("No recording available to play."); statusDiv.textContent = "No recording available."; return; } if (!audioContext || audioContext.state !== 'running') { console.warn("AudioContext not ready."); resumeAudioContext(); statusDiv.textContent = "Audio not ready. Click Play again."; return; } if (isRecordingPlayback) { recordingVisualTimeoutIds.forEach(clearTimeout); recordingVisualTimeoutIds = []; Object.keys(activeManualSources).forEach(id => stopManualSound(id, true)); buttons.forEach(btn => releaseButtonVisually(btn.dataset.buttonId)); if (recordingProgressUpdateId) cancelAnimationFrame(recordingProgressUpdateId); } console.log(`Starting playback of recording (${recordedEvents.length} events)... Loop: ${loop}`); isRecordingPlayback = true; playRecBtn.disabled = true; stopBtn.disabled = false; recordBtn.disabled = true; statusDiv.textContent = loop ? "Looping Recording..." : "Playing Recording..."; recordingVisualTimeoutIds = []; recordingPlaybackStartTime = audioContext.currentTime; let lastEventTime = 0; if (recordedEvents.length > 0) { lastEventTime = recordedEvents[recordedEvents.length - 1].time; } recordingTotalDurationSeconds = lastEventTime; updateProgressIndicator(0, recordingTotalDurationSeconds); if (recordingProgressUpdateId) cancelAnimationFrame(recordingProgressUpdateId); recordingProgressUpdateId = requestAnimationFrame(recordingProgressLoop); recordedEvents.forEach(event => { const scheduledTime = recordingPlaybackStartTime + (event.time / playbackSpeedFactor); const delayMs = Math.max(0, (scheduledTime - audioContext.currentTime) * 1000); switch (event.type) { case 'press': recordingVisualTimeoutIds.push(setTimeout(() => { if (!isRecordingPlayback) return; const pressMode = event.mode || 'push'; pressButtonVisually(event.id, pressMode, false); currentBellowsMode = pressMode; playManualSound(event.id, true); }, delayMs)); break; case 'release': recordingVisualTimeoutIds.push(setTimeout(() => { if (!isRecordingPlayback) return; releaseButtonVisually(event.id); stopManualSound(event.id); }, delayMs)); break; case 'bellows': recordingVisualTimeoutIds.push(setTimeout(() => { if (!isRecordingPlayback) return; setPlaybackBellowsMode(event.mode); }, delayMs)); break; } }); const recordingDurationAdjusted = recordingTotalDurationSeconds / playbackSpeedFactor; const endDelayMillis = Math.max(0, recordingDurationAdjusted * 1000) + 200; recordingVisualTimeoutIds.push(setTimeout(() => { if (isRecordingPlayback) { const shouldLoop = loopCheckbox && loopCheckbox.checked; if (shouldLoop && loop) { console.log("Looping recording..."); isRecordingPlayback = false; startRecordingPlayback(true); } else { console.log("Recording playback finished."); stopRecordingPlayback(); } } }, endDelayMillis)); }
+        // Stop Recording Playback (unchanged)
+        function stopRecordingPlayback() { if (!isRecordingPlayback) return; console.log("Stopping recording playback..."); isRecordingPlayback = false; if (recordingProgressUpdateId) { cancelAnimationFrame(recordingProgressUpdateId); recordingProgressUpdateId = null; } recordingVisualTimeoutIds.forEach(clearTimeout); recordingVisualTimeoutIds = []; Object.keys(activeManualSources).forEach(id => stopManualSound(id, true)); buttons.forEach(btn => releaseButtonVisually(btn.dataset.buttonId)); playRecBtn.disabled = recordedEvents.length === 0; stopBtn.disabled = true; recordBtn.disabled = false; statusDiv.textContent = "Recording playback stopped."; if (progressDisplayElement) { updateProgressIndicator(0, recordingTotalDurationSeconds); } } // Reset progress
+        // Recording Progress Update Loop (unchanged)
+        function recordingProgressLoop() { if (!isRecordingPlayback) { recordingProgressUpdateId = null; return; } let elapsedAudioTime = audioContext.currentTime - recordingPlaybackStartTime; let recordingElapsedTimeAdjusted = elapsedAudioTime; // Already accounts for speed? No, need factor.
+         let recordingElapsedTime = elapsedAudioTime * playbackSpeedFactor; // Calculate elapsed time at 1x for display consistency? Or show actual audio time? Let's show actual audio time vs total audio time.
+         let totalDurationAdjusted = recordingTotalDurationSeconds / playbackSpeedFactor;
+         recordingElapsedTimeAdjusted = Math.max(0, Math.min(recordingElapsedTimeAdjusted, totalDurationAdjusted)); // Clamp actual audio time
+         updateProgressIndicator(recordingElapsedTimeAdjusted, totalDurationAdjusted); // Show actual audio time elapsed vs total audio time
+         recordingProgressUpdateId = requestAnimationFrame(recordingProgressLoop); }
+
+
+        // --- localStorage Functions (unchanged) ---
+        function getSavedRecordingsIndex() { const indexJson = localStorage.getItem(RECORDINGS_INDEX_KEY); try { return indexJson ? JSON.parse(indexJson) : []; } catch (e) { console.error("Error parsing recordings index from localStorage:", e); return []; } }
+        function saveRecordingToIndex(name) { const index = getSavedRecordingsIndex(); if (!index.includes(name)) { index.push(name); index.sort(); try { localStorage.setItem(RECORDINGS_INDEX_KEY, JSON.stringify(index)); return true; } catch (e) { console.error("Error saving recordings index to localStorage:", e); alert("Error saving recording index. Storage might be full."); return false; } } return true; }
+        function removeRecordingFromIndex(name) { let index = getSavedRecordingsIndex(); index = index.filter(item => item !== name); try { localStorage.setItem(RECORDINGS_INDEX_KEY, JSON.stringify(index)); return true; } catch (e) { console.error("Error saving updated recordings index:", e); alert("Error updating recording index."); return false; } }
+        function populateRecordingsList() { if (!recordingSelect) return; const index = getSavedRecordingsIndex(); while (recordingSelect.options.length > 1) { recordingSelect.remove(1); } index.forEach(name => { const option = document.createElement('option'); option.value = name; option.textContent = name; recordingSelect.appendChild(option); }); const hasRecordings = index.length > 0; loadRecBtn.disabled = !hasRecordings || recordingSelect.value === ""; deleteRecBtn.disabled = !hasRecordings || recordingSelect.value === ""; renameRecBtn.disabled = !hasRecordings || recordingSelect.value === ""; recordingSelect.disabled = !hasRecordings; if (!hasRecordings) recordingSelect.value = ""; }
+        function getUniqueRecordingName(baseName) { const existingNames = getSavedRecordingsIndex(); if (!existingNames.includes(baseName)) { return baseName; } let counter = 1; let uniqueName = `${baseName} (${counter})`; while (existingNames.includes(uniqueName)) { counter++; uniqueName = `${baseName} (${counter})`; } return uniqueName; }
+        function saveCurrentRecording() { if (recordedEvents.length === 0) { alert("No recording data to save."); return; } const name = prompt("Enter a name for this recording:", `Rec-${Date.now()}`); if (!name || name.trim() === "") { alert("Invalid name. Recording not saved."); return; } const trimmedName = name.trim(); const recordingKey = RECORDING_PREFIX + trimmedName; try { const jsonData = JSON.stringify(recordedEvents); localStorage.setItem(recordingKey, jsonData); if (saveRecordingToIndex(trimmedName)) { populateRecordingsList(); recordingSelect.value = trimmedName; loadRecBtn.disabled = false; deleteRecBtn.disabled = false; renameRecBtn.disabled = false; recordingSelect.disabled = false; alert(`Recording "${trimmedName}" saved successfully!`); } } catch (e) { console.error("Error saving recording to localStorage:", e); alert("Failed to save recording. Storage might be full."); removeRecordingFromIndex(trimmedName); populateRecordingsList(); } }
+        function downloadCurrentRecording() { if (recordedEvents.length === 0) { alert("No recording data to download."); return; } const defaultFilename = `accordion-recording-${Date.now()}.json`; const filename = prompt("Enter filename to download:", defaultFilename); if (!filename || filename.trim() === "") { alert("Invalid filename."); return; } try { const jsonData = JSON.stringify(recordedEvents, null, 2); const blob = new Blob([jsonData], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = filename.endsWith('.json') ? filename : filename + '.json'; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url); console.log(`Recording downloaded as ${a.download}`); } catch (e) { console.error("Error creating download link:", e); alert("Failed to prepare recording for download."); } }
+        function loadSelectedRecording() { if (!recordingSelect || recordingSelect.value === "") { alert("Please select a recording to load."); return; } const name = recordingSelect.value; const recordingKey = RECORDING_PREFIX + name; const jsonData = localStorage.getItem(recordingKey); if (!jsonData) { alert(`Error: Recording "${name}" not found in storage.`); removeRecordingFromIndex(name); populateRecordingsList(); return; } try { const loadedData = JSON.parse(jsonData); if (Array.isArray(loadedData)) { recordedEvents = loadedData; statusDiv.textContent = `Loaded recording: "${name}" (${recordedEvents.length} events).`; console.log(`Loaded recording "${name}"`); playRecBtn.disabled = recordedEvents.length === 0; saveRecBtn.disabled = recordedEvents.length === 0; downloadRecBtn.disabled = recordedEvents.length === 0; deleteRecBtn.disabled = false; renameRecBtn.disabled = false; } else { throw new Error("Invalid data format in localStorage."); } } catch (e) { console.error(`Error loading or parsing recording "${name}":`, e); alert(`Failed to load recording "${name}". It might be corrupted.`); } }
+        function deleteSelectedRecording() { if (!recordingSelect || recordingSelect.value === "") { alert("Please select a recording to delete."); return; } const name = recordingSelect.value; if (!confirm(`Are you sure you want to delete recording "${name}"?`)) { return; } const recordingKey = RECORDING_PREFIX + name; try { localStorage.removeItem(recordingKey); if (removeRecordingFromIndex(name)) { populateRecordingsList(); recordedEvents = []; playRecBtn.disabled = true; saveRecBtn.disabled = true; downloadRecBtn.disabled = true; deleteRecBtn.disabled = recordingSelect.options.length <= 1; renameRecBtn.disabled = recordingSelect.options.length <= 1; statusDiv.textContent = `Recording "${name}" deleted.`; console.log(`Deleted recording "${name}"`); } } catch (e) { console.error(`Error deleting recording "${name}":`, e); alert(`Failed to delete recording "${name}".`); } }
+        function renameSelectedRecording() { if (!recordingSelect || recordingSelect.value === "") { alert("Please select a recording to rename."); return; } const oldName = recordingSelect.value; const newName = prompt(`Enter new name for "${oldName}":`, oldName); if (!newName || newName.trim() === "" || newName.trim() === oldName) { alert("Invalid or unchanged name. Rename cancelled."); return; } const trimmedNewName = newName.trim(); const oldKey = RECORDING_PREFIX + oldName; const newKey = RECORDING_PREFIX + trimmedNewName; const index = getSavedRecordingsIndex(); if (index.includes(trimmedNewName)) { alert(`A recording named "${trimmedNewName}" already exists. Please choose a different name.`); return; } const jsonData = localStorage.getItem(oldKey); if (!jsonData) { alert(`Error: Original recording "${oldName}" not found.`); removeRecordingFromIndex(oldName); populateRecordingsList(); return; } try { localStorage.setItem(newKey, jsonData); localStorage.removeItem(oldKey); if (removeRecordingFromIndex(oldName)) { if (saveRecordingToIndex(trimmedNewName)) { populateRecordingsList(); recordingSelect.value = trimmedNewName; statusDiv.textContent = `Renamed "${oldName}" to "${trimmedNewName}".`; console.log(`Renamed "${oldName}" to "${trimmedNewName}"`); } else { alert("Error updating recording index after rename."); } } else { alert("Error removing old name from index during rename."); localStorage.removeItem(newKey); } } catch (e) { console.error(`Error renaming recording:`, e); alert("Failed to rename recording. Storage might be full or data corrupted."); if (!localStorage.getItem(oldKey) && localStorage.getItem(newKey)) { localStorage.removeItem(newKey); } populateRecordingsList(); } }
+
+
+        // --- Wait for DOM Ready ---
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log("DOM fully loaded and parsed.");
+
+            // --- Get Element References ---
+            buttons = document.querySelectorAll('.acc-button'); loadingIndicator = document.getElementById('loading-indicator'); board = document.querySelector('.button-board'); bellowsToggle = document.getElementById('bellows-toggle'); toneSelect = document.getElementById('tone-select'); themeSelect = document.getElementById('theme-select'); body = document.body; musicSheetArea = document.getElementById('music-sheet-area'); toggleSheetBtn = document.getElementById('toggle-sheet-music'); osmdContainer = document.getElementById('osmd-container'); fileInput = document.getElementById('musicxml-file');
+            playBtn = document.getElementById('play-btn'); playSubBtn = document.getElementById('play-sub-btn'); stopBtn = document.getElementById('stop-btn');
+            loopCheckbox = document.getElementById('loop-checkbox'); loopStartMeasureInput = document.getElementById('loop-start-measure'); loopEndMeasureInput = document.getElementById('loop-end-measure');
+            recordBtn = document.getElementById('record-btn'); playRecBtn = document.getElementById('play-rec-btn');
+            saveRecBtn = document.getElementById('save-rec-btn'); downloadRecBtn = document.getElementById('download-rec-btn');
+            recordingSelect = document.getElementById('recording-select'); loadRecBtn = document.getElementById('load-rec-btn'); deleteRecBtn = document.getElementById('delete-rec-btn');
+            renameRecBtn = document.getElementById('rename-rec-btn');
+            loadRecFileInput = document.getElementById('load-rec-file-input');
+            statusDiv = document.getElementById('playback-status');
+            progressDisplayElement = document.getElementById('playback-progress-display');
+            speedSlider = document.getElementById('speed-slider'); speedDisplay = document.getElementById('speed-display'); customHighlight = document.getElementById('custom-highlight');
+
+            // Check crucial elements (unchanged)
+            if (!osmdContainer) { console.error("CRITICAL: #osmd-container element NOT FOUND!"); return; } if (!customHighlight) { console.error("CRITICAL: #custom-highlight element NOT FOUND!"); } if (!toneSelect) { console.error("CRITICAL: #tone-select element NOT FOUND!"); }
+            else { toneSelect.value = currentToneName; activeNoteMapping = (currentToneName === 'GCF') ? gcfNoteMapping : fbeNoteMapping; console.log(`Initial active note mapping set to: ${currentToneName}`); }
+            if (!progressDisplayElement) { console.error("CRITICAL: #playback-progress-display element NOT FOUND!"); }
+            if (!loopCheckbox || !loopStartMeasureInput || !loopEndMeasureInput) { console.warn("Loop control elements not found."); }
+            if (!recordBtn || !playRecBtn || !saveRecBtn || !downloadRecBtn || !recordingSelect || !loadRecBtn || !deleteRecBtn || !renameRecBtn || !loadRecFileInput) { console.error("CRITICAL: One or more recorder UI elements not found!"); }
+
+
+            // --- Initialize Audio Context ---
+            initAudioContext();
+
+            // --- Initialize OSMD ---
+            try { osmd = new opensheetmusicdisplay.OpenSheetMusicDisplay(osmdContainer, { autoResize: true, backend: "svg", drawTitle: true, drawMeasureNumbers: true }); console.log("OSMD Initialized."); setTimeout(() => { if (osmd && osmd.cursor) osmd.cursor.hide(); }, 100); }
+            catch (e) { console.error("Error initializing OSMD:", e); statusDiv.textContent = "Error initializing Sheet Music Display."; if(fileInput) fileInput.disabled = true; if(playBtn) playBtn.disabled = true; if(playSubBtn) playSubBtn.disabled = true; if(toggleSheetBtn) toggleSheetBtn.disabled = true; }
+
+            // --- Populate Recordings List on Load ---
+            populateRecordingsList();
+
+            // --- Setup Event Listeners ---
+
+            // Manual Play Interaction (unchanged)
+            if (board) { board.addEventListener('mousedown', (event) => { if (event.target.classList.contains('acc-button')) { event.preventDefault(); isPointerDown = true; handlePress(event.target); } }); board.addEventListener('mouseover', (event) => { if (isPointerDown && event.target.classList.contains('acc-button')) { if (event.buttons === 1) { handlePress(event.target); } else { isPointerDown = false; buttons.forEach(handleRelease); } } }); board.addEventListener('mouseout', (event) => { if (isPointerDown && event.target.classList.contains('acc-button')) { handleRelease(event.target); } }); board.addEventListener('touchstart', (event) => { event.preventDefault(); isPointerDown = true; for (const touch of event.changedTouches) { const elementUnderTouch = document.elementFromPoint(touch.clientX, touch.clientY); if (elementUnderTouch && elementUnderTouch.classList.contains('acc-button')) { handlePress(elementUnderTouch); activeTouches.set(touch.identifier, elementUnderTouch); } } }, { passive: false }); board.addEventListener('touchmove', (event) => { event.preventDefault(); if (!isPointerDown && event.touches.length === 0) return; for (const touch of event.changedTouches) { const currentElement = document.elementFromPoint(touch.clientX, touch.clientY); const lastButtonForThisTouch = activeTouches.get(touch.identifier); let currentButton = null; if (currentElement && currentElement.classList.contains('acc-button')) { currentButton = currentElement; } if (currentButton !== lastButtonForThisTouch) { if (lastButtonForThisTouch) { handleRelease(lastButtonForThisTouch); } if (currentButton) { handlePress(currentButton); activeTouches.set(touch.identifier, currentButton); } else { activeTouches.delete(touch.identifier); } } } }, { passive: false }); board.addEventListener('touchend', handleTouchEndOrCancel); board.addEventListener('touchcancel', handleTouchEndOrCancel); }
+            document.addEventListener('mouseup', (event) => { if (isPointerDown) { isPointerDown = false; buttons.forEach(button => { if (button.classList.contains('pressed') && !Array.from(activeTouches.values()).includes(button)) { handleRelease(button); } }); } }); document.addEventListener('dragstart', (e) => e.preventDefault());
+
+            // Bellows Toggle Listeners (unchanged)
+            if (bellowsToggle) { setBellowsMode('push', true); bellowsToggle.addEventListener('mousedown', (e) => { e.preventDefault(); setBellowsMode('pull'); }); bellowsToggle.addEventListener('mouseup', () => { setBellowsMode('push'); }); bellowsToggle.addEventListener('mouseleave', () => { if (bellowsToggle.classList.contains('active')) { setBellowsMode('push'); } }); bellowsToggle.addEventListener('touchstart', (e) => { e.preventDefault(); setBellowsMode('pull'); }, { passive: false }); bellowsToggle.addEventListener('touchend', () => { setBellowsMode('push'); }); bellowsToggle.addEventListener('touchcancel', () => { setBellowsMode('push'); }); }
+
+            // Spacebar Listener for Bellows (unchanged)
+            document.addEventListener('keydown', (event) => { if (event.metaKey || event.ctrlKey || event.altKey || event.target.matches('input, select, textarea')) { return; } if (event.code === 'Space') { event.preventDefault(); if (currentBellowsMode !== 'pull') { setBellowsMode('pull'); if(bellowsToggle) bellowsToggle.classList.add('active'); } } });
+            document.addEventListener('keyup', (event) => { if (event.target.matches('input, select, textarea')) { return; } if (event.code === 'Space') { event.preventDefault(); setBellowsMode('push'); if(bellowsToggle) bellowsToggle.classList.remove('active'); } });
+
+
+            // Tone Selection Listener (unchanged logic, but re-parsing behavior might be affected by startPlayback changes)
+            if (toneSelect) { toneSelect.addEventListener('change', (event) => { const newTone = event.target.value; if (newTone !== currentToneName) { console.log(`Switching tone to: ${newTone}`); currentToneName = newTone; activeNoteMapping = (currentToneName === 'GCF') ? gcfNoteMapping : fbeNoteMapping; console.log(`Active note mapping switched to ${currentToneName}`); Object.keys(activeManualSources).forEach(id => stopManualSound(id, true)); activeManualSources = {}; buttons.forEach(btn => btn.classList.remove('pressed')); activeTouches.clear(); isPointerDown = false; if (audioContext && audioContext.state === 'running') { loadSamplesForTone(currentToneName); } else { console.warn("AudioContext not running, samples will load on next interaction."); resumeAudioContext(); } if (isScoreLoaded && osmd) { console.log(`Score is loaded, re-parsing for new tone: ${currentToneName}`); scoreNotes = parseScoreData(osmd, activeNoteMapping, false); // Strict notes
+                 allParsedNotes = parseScoreData(osmd, activeNoteMapping, true); // All notes (for subs/timing)
+                 const canPlayStrict = scoreNotes.length > 0; const canPlaySub = allParsedNotes.length > 0; playBtn.disabled = !canPlayStrict; playSubBtn.disabled = !canPlaySub; if(loopEndMeasureInput) { loopEndMeasureInput.max = totalMeasures; loopEndMeasureInput.value = totalMeasures; } if(loopStartMeasureInput) { loopStartMeasureInput.max = totalMeasures; } const totalDurationAudio = parsedLastNoteEndTime1x / playbackSpeedFactor; updateProgressIndicator(0, totalDurationAudio); console.log(`Re-parsed score for ${currentToneName}. Found ${scoreNotes.length} strict notes, ${allParsedNotes.length} total notes. Total Measures: ${totalMeasures}`); statusDiv.textContent = `Ready (${currentToneName}): ${fileInput.files[0]?.name || 'Score loaded'}`; if (!canPlayStrict && canPlaySub) { statusDiv.textContent = `Ready (${currentToneName}, subs only): ${fileInput.files[0]?.name || 'Score loaded'}`; } else if (!canPlayStrict && !canPlaySub) { statusDiv.textContent = `No playable notes found in ${fileInput.files[0]?.name || 'score'} for ${currentToneName} mapping.`; } } } }); }
+
+            // Theme Selection Listener (unchanged)
+            if (themeSelect) { themeSelect.addEventListener('change', (event) => { const selectedTheme = event.target.value; console.log(`Switching theme to: ${selectedTheme}`); body.classList.remove('theme-light', 'theme-mexico'); if (selectedTheme === 'light') { body.classList.add('theme-light'); } else if (selectedTheme === 'mexico') { body.classList.add('theme-mexico'); } }); }
+
+            // MusicXML File Input Listener (unchanged logic, but uses updated parseScoreData results)
+            if (fileInput) {
+                fileInput.addEventListener('change', (event) => {
+                    const file = event.target.files[0]; if (!file || !osmd) { return; } statusDiv.textContent = `Loading ${file.name}...`; playBtn.disabled = true; playSubBtn.disabled = true; stopBtn.disabled = true; isScoreLoaded = false; scoreNotes = []; allParsedNotes = []; parsedLastNoteEndTime1x = 0; totalMeasures = 0; if (progressDisplayElement) { progressDisplayElement.textContent = '--:-- / --:--'; } if(loopStartMeasureInput) loopStartMeasureInput.value = 1; if(loopEndMeasureInput) loopEndMeasureInput.value = 1; loopEndMeasureInput.max = 1; const reader = new FileReader();
+                    reader.onload = async (e) => {
+                        const fileContent = e.target.result;
+                        try {
+                            statusDiv.textContent = `Rendering ${file.name}...`; while (osmdContainer.firstChild && osmdContainer.firstChild !== customHighlight) { osmdContainer.removeChild(osmdContainer.firstChild); } if (!osmdContainer.contains(customHighlight)) { osmdContainer.appendChild(customHighlight); }
+                            await osmd.load(fileContent); osmd.render(); statusDiv.textContent = `Loaded: ${file.name}. Parsing...`; console.log("MusicXML loaded and rendered."); if (!osmd.cursor) { console.error("OSMD cursor not available after rendering."); statusDiv.textContent = "Error: Cursor initialization failed."; return; } osmd.cursor.hide(); isScoreLoaded = true;
+                            // Parse both sets of notes
+                            scoreNotes = parseScoreData(osmd, activeNoteMapping, false); // Strict
+                            allParsedNotes = parseScoreData(osmd, activeNoteMapping, true); // All (for subs/timing)
+                            const canPlayStrict = scoreNotes.length > 0; const canPlaySub = allParsedNotes.length > 0; playBtn.disabled = !canPlayStrict; playSubBtn.disabled = !canPlaySub; if(loopEndMeasureInput) { loopEndMeasureInput.max = totalMeasures; loopEndMeasureInput.value = totalMeasures; } if(loopStartMeasureInput) { loopStartMeasureInput.max = totalMeasures; } const totalDurationAudio = parsedLastNoteEndTime1x / playbackSpeedFactor; updateProgressIndicator(0, totalDurationAudio); console.log(`Parsed ${scoreNotes.length} strict notes, ${allParsedNotes.length} total notes for ${currentToneName}. Total Measures: ${totalMeasures}`); statusDiv.textContent = `Ready (${currentToneName}): ${file.name}`; if (!canPlayStrict && canPlaySub) { statusDiv.textContent = `Ready (${currentToneName}, subs only): ${file.name}`; } else if (!canPlayStrict && !canPlaySub) { statusDiv.textContent = `No playable notes found in ${file.name} for ${currentToneName} mapping.`; }
+                        } catch (error) { console.error("Error loading, rendering, or parsing MusicXML:", error); statusDiv.textContent = `Error: ${error.message}`; playBtn.disabled = true; playSubBtn.disabled = true; stopBtn.disabled = true; isScoreLoaded = false; scoreNotes = []; allParsedNotes = []; } finally { fileInput.value = ''; }
+                    };
+                    reader.onerror = (e) => { console.error("Error reading file:", e); statusDiv.textContent = "Error reading file."; playBtn.disabled = true; playSubBtn.disabled = true; stopBtn.disabled = true; isScoreLoaded = false; scoreNotes = []; allParsedNotes = []; fileInput.value = ''; };
+                    if (file.name.endsWith('.mxl')) { reader.readAsArrayBuffer(file); } else { reader.readAsText(file); }
+                });
+            }
+
+
+            // Playback Control Listeners (unchanged)
+            if (playBtn) { playBtn.addEventListener('click', () => startPlayback(false)); } // Calls modified startPlayback
+            if (playSubBtn) { playSubBtn.addEventListener('click', () => startPlayback(true)); } // Calls modified startPlayback
+            if (stopBtn) {
+                stopBtn.addEventListener('click', () => {
+                    if (isPlaying) stopPlayback(); // Stop MusicXML playback
+                    if (isRecordingPlayback) stopRecordingPlayback(); // Stop Recording playback
+                });
+             }
+
+             // Recorder Control Listeners (unchanged)
+             if (recordBtn) { recordBtn.addEventListener('click', () => { if (!audioContext || audioContext.state !== 'running') { resumeAudioContext(); statusDiv.textContent = "Audio not ready. Try again."; return; } if (!isRecording) { if (isPlaying || isRecordingPlayback) { statusDiv.textContent = "Stop playback before recording."; return; } isRecording = true; recordedEvents = []; recordingStartTime = audioContext.currentTime; recordBtn.textContent = "Stop Recording"; const indicator = document.createElement('span'); indicator.id = 'record-indicator'; recordBtn.appendChild(indicator); playRecBtn.disabled = true; saveRecBtn.disabled = true; downloadRecBtn.disabled = true; loadRecBtn.disabled = true; deleteRecBtn.disabled = true; renameRecBtn.disabled = true; recordingSelect.disabled = true; playBtn.disabled = true; playSubBtn.disabled = true; statusDiv.textContent = "Recording..."; console.log("Recording started."); } else { isRecording = false; recordBtn.textContent = "Record"; const indicator = document.getElementById('record-indicator'); if (indicator) indicator.remove(); const hasRecording = recordedEvents.length > 0; playRecBtn.disabled = !hasRecording; saveRecBtn.disabled = !hasRecording; downloadRecBtn.disabled = !hasRecording; const hasSavedRecordings = recordingSelect.options.length > 1; loadRecBtn.disabled = !hasSavedRecordings || recordingSelect.value === ""; const hasSelection = recordingSelect.value !== ""; deleteRecBtn.disabled = !hasSelection; renameRecBtn.disabled = !hasSelection; recordingSelect.disabled = !hasSavedRecordings; // Re-enable MusicXML play buttons if score is loaded
+                 playBtn.disabled = !isScoreLoaded || scoreNotes.length === 0; playSubBtn.disabled = !isScoreLoaded || allParsedNotes.length === 0; statusDiv.textContent = `Recording finished (${recordedEvents.length} events).`; console.log("Recording stopped."); console.log("Recorded Events:", recordedEvents); } }); }
+             if (playRecBtn) { playRecBtn.addEventListener('click', () => startRecordingPlayback(loopCheckbox && loopCheckbox.checked)); }
+             if (saveRecBtn) { saveRecBtn.addEventListener('click', saveCurrentRecording); }
+             if (downloadRecBtn) { downloadRecBtn.addEventListener('click', downloadCurrentRecording); }
+             if (loadRecBtn) { loadRecBtn.addEventListener('click', loadSelectedRecording); }
+             if (deleteRecBtn) { deleteRecBtn.addEventListener('click', deleteSelectedRecording); }
+             if (renameRecBtn) { renameRecBtn.addEventListener('click', renameSelectedRecording); }
+             if (recordingSelect) { recordingSelect.addEventListener('change', () => { const hasSelection = recordingSelect.value !== ""; deleteRecBtn.disabled = !hasSelection; loadRecBtn.disabled = !hasSelection; renameRecBtn.disabled = !hasSelection; }); }
+             if (loadRecFileInput) { loadRecFileInput.addEventListener('change', (event) => { const file = event.target.files[0]; if (!file) { return; } console.log(`File selected for upload: ${file.name}`); const reader = new FileReader(); reader.onload = (e) => { console.log("FileReader onload triggered for upload."); const text = e.target.result; try { const loadedData = JSON.parse(text); if (Array.isArray(loadedData) && (loadedData.length === 0 || (loadedData[0].hasOwnProperty('time') && loadedData[0].hasOwnProperty('type')))) { let baseName = file.name.toLowerCase().endsWith('.json') ? file.name.slice(0, -5) : file.name; baseName = baseName.trim() || 'Uploaded Recording'; const uniqueName = getUniqueRecordingName(baseName); const recordingKey = RECORDING_PREFIX + uniqueName; localStorage.setItem(recordingKey, JSON.stringify(loadedData)); if (saveRecordingToIndex(uniqueName)) { populateRecordingsList(); recordingSelect.value = uniqueName; recordedEvents = loadedData; statusDiv.textContent = `Uploaded and saved as: "${uniqueName}" (${recordedEvents.length} events).`; console.log(`Uploaded recording "${file.name}" and saved as "${uniqueName}"`); playRecBtn.disabled = recordedEvents.length === 0; saveRecBtn.disabled = recordedEvents.length === 0; downloadRecBtn.disabled = recordedEvents.length === 0; deleteRecBtn.disabled = false; renameRecBtn.disabled = false; loadRecBtn.disabled = false; recordingSelect.disabled = false; } else { throw new Error("Failed to save recording name to index."); } } else { throw new Error("Invalid recording file format."); } } catch (err) { console.error("Error processing uploaded recording file:", err); alert(`Error loading file: ${err.message}`); statusDiv.textContent = "Failed to load recording file."; playRecBtn.disabled = true; saveRecBtn.disabled = true; downloadRecBtn.disabled = true; } finally { console.log("Resetting upload file input."); loadRecFileInput.value = ''; } }; reader.onerror = (e) => { console.error("Error reading uploaded file:", e); alert("Error reading file."); statusDiv.textContent = "Error reading file."; loadRecFileInput.value = ''; }; reader.readAsText(file); }); }
+             // --- End Recorder Listeners ---
+
+
+            // Toggle Sheet Music Area Listener (unchanged)
+            if (toggleSheetBtn) { toggleSheetBtn.addEventListener('click', () => { if (musicSheetArea) { const isHidden = musicSheetArea.classList.toggle('hidden'); toggleSheetBtn.textContent = isHidden ? "Show Music" : "Hide Music"; if (!isHidden) { setTimeout(() => { if (osmd && typeof osmd.handleResize === 'function') { try { osmd.handleResize(); console.log("Called osmd.handleResize()"); if (osmd.cursor && !isPlaying) osmd.cursor.hide(); } catch(e){ console.error("OSMD error after toggle/resize:", e); } } }, 50); } else if (osmd && osmd.cursor) { try { osmd.cursor.hide(); } catch(e) {} } } }); }
+
+            // Speed Slider Listener (unchanged logic, but progress display updates differently now)
+            if (speedSlider) {
+                 speedSlider.addEventListener('input', (event) => {
+                     playbackSpeedFactor = parseFloat(event.target.value);
+                     speedDisplay.textContent = `${playbackSpeedFactor.toFixed(2)}x`;
+                     if (isPlaying) { // If playing, stop and update status/progress
+                         stopPlayback();
+                         statusDiv.textContent = `Speed changed to ${playbackSpeedFactor.toFixed(2)}x. Press Play to restart.`;
+                         // Update progress display based on new speed for the *full* piece duration
+                         const totalDurationAudio = parsedLastNoteEndTime1x / playbackSpeedFactor;
+                         updateProgressIndicator(0, totalDurationAudio);
+                     }
+                     else if (isRecordingPlayback) { // If playing recording, stop and update status
+                         stopRecordingPlayback();
+                         statusDiv.textContent = `Speed changed to ${playbackSpeedFactor.toFixed(2)}x. Press Play Recording to restart.`;
+                         // Update progress display based on new speed for recording
+                         const totalRecDurationAudio = recordingTotalDurationSeconds / playbackSpeedFactor;
+                         updateProgressIndicator(0, totalRecDurationAudio);
+                     }
+                     else { // If idle, just update status and progress display if score loaded
+                         if (isScoreLoaded) {
+                             const totalDurationAudio = parsedLastNoteEndTime1x / playbackSpeedFactor;
+                             updateProgressIndicator(0, totalDurationAudio);
+                             statusDiv.textContent = `Ready (${currentToneName}): ${fileInput.files[0]?.name || 'Score loaded'}`;
+                         } else {
+                             statusDiv.textContent = `Speed: ${playbackSpeedFactor.toFixed(2)}x`;
+                             updateProgressIndicator(0, 0); // Show 0 / 0 if no score
+                         }
+                     }
+                     console.log(`Playback speed factor set to: ${playbackSpeedFactor}`);
+                 });
+             }
+
+            // --- Initial Setup ---
+            if(musicSheetArea) musicSheetArea.classList.add('hidden');
+            if(toggleSheetBtn) toggleSheetBtn.textContent = "Show Music";
+            if(progressDisplayElement) progressDisplayElement.textContent = '--:-- / --:--'; // Initial progress text
+            if(renameRecBtn) renameRecBtn.disabled = true; // Disable rename initially
+
+
+            console.log("Initial setup complete. Waiting for audio context resume via user interaction.");
+
+        }); // End DOMContentLoaded listener
+
+    </script>
+
+</body>
+</html>
