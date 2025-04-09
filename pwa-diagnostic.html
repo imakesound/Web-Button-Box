@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PWA Diagnostic Tool</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        h1 {
+            color: #333;
+        }
+        .success {
+            color: green;
+            font-weight: bold;
+        }
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+        .warn {
+            color: orange;
+            font-weight: bold;
+        }
+        pre {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        button {
+            background: #4285f4;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px 0;
+        }
+        #results {
+            margin-top: 20px;
+        }
+        .test-item {
+            margin-bottom: 15px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>PWA Installation Diagnostic Tool</h1>
+    <p>This tool checks why your PWA might not be installable.</p>
+    <button id="run-tests">Run All Tests</button>
+    <div id="results"></div>
+
+    <script>
+        const resultsContainer = document.getElementById('results');
+
+        // Helper function to create a test result entry
+        function createResultEntry(title, status, message, details = null) {
+            const entry = document.createElement('div');
+            entry.className = 'test-item';
+
+            const titleElement = document.createElement('h3');
+            titleElement.textContent = title;
+            entry.appendChild(titleElement);
+
+            const statusElement = document.createElement('p');
+            statusElement.className = status;
+            statusElement.textContent = message;
+            entry.appendChild(statusElement);
+
+            if (details) {
+                const detailsElement = document.createElement('pre');
+                detailsElement.textContent = typeof details === 'object' ?
+                    JSON.stringify(details, null, 2) : details;
+                entry.appendChild(detailsElement);
+            }
+
+            return entry;
+        }
+
+        // Test for HTTPS
+        async function testHttps() {
+            const isLocalhost =
+                window.location.hostname === 'localhost' ||
+                window.location.hostname === '127.0.0.1';
+            const isHttps = window.location.protocol === 'https:';
+
+            if (isHttps || isLocalhost) {
+                return {
+                    title: "HTTPS Check",
+                    status: "success",
+                    message: isLocalhost ?
+                        "You're on localhost which is exempt from HTTPS requirement" :
+                        "Your site is served over HTTPS",
+                    details: `Protocol: ${window.location.protocol}, Hostname: ${window.location.hostname}`
+                };
+            } else {
+                return {
+                    title: "HTTPS Check",
+                    status: "error",
+                    message: "Your site must be served over HTTPS to be installable",
+                    details: `Current URL: ${window.location.href}`
+                };
+            }
+        }
+
+        // Test for manifest
+        async function testManifest() {
+            try {
+                const manifestLinks = document.querySelectorAll('link[rel="manifest"]');
+
+                if (manifestLinks.length === 0) {
+                    return {
+                        title: "Web App Manifest",
+                        status: "error",
+                        message: "No manifest link found in the document",
+                        details: "Add <link rel=\"manifest\" href=\"manifest.json\"> to your HTML"
+                    };
+                }
+
+                const manifestHref = manifestLinks[0].href;
+
+                try {
+                    const response = await fetch(manifestHref);
+
+                    if (!response.ok) {
+                        return {
+                            title: "Web App Manifest",
+                            status: "error",
+                            message: `Failed to fetch manifest: ${response.status} ${response.statusText}`,
+                            details: `Manifest URL: ${manifestHref}`
+                        };
+                    }
+
+                    const manifest = await response.json();
+
+                    // Check required fields
+                    const requiredFields = ['name', 'short_name', 'start_url', 'display', 'icons'];
+                    const missingFields = requiredFields.filter(field => !manifest[field]);
+
+                    if (missingFields.length > 0) {
+                        return {
+                            title: "Web App Manifest",
+                            status: "error",
+                            message: `Manifest is missing required fields: ${missingFields.join(', ')}`,
+                            details: manifest
+                        };
+                    }
+
+                    // Check icons
+                    const has192Icon = manifest.icons && manifest.icons.some(icon =>
+                        icon.sizes && icon.sizes.includes('192x192'));
+                    const has512Icon = manifest.icons && manifest.icons.some(icon =>
+                        icon.sizes && icon.sizes.includes('512x512'));
+
+                    if (!has192Icon || !has512Icon) {
+                        return {
+                            title: "Web App Manifest",
+                            status: "error",
+                            message: `Manifest is missing required icon sizes: ${!has192Icon ? '192x192' : ''} ${!has512Icon ? '512x512' : ''}`,
+                            details: manifest.icons
+                        };
+                    }
+
+                    // Check display mode
+                    const validDisplayModes = ['standalone', 'fullscreen', 'minimal-ui'];
+                    if (!validDisplayModes.includes(manifest.display)) {
+                        return {
+                            title: "Web App Manifest",
+                            status: "error",
+                            message: `Invalid display mode: ${manifest.display}. Must be one of: ${validDisplayModes.join(', ')}`,
+                            details: manifest
+                        };
+                    }
+
+                    return {
+                        title: "Web App Manifest",
+                        status: "success",
+                        message: "Manifest is valid and contains all required fields",
+                        details: manifest
+                    };
+                } catch (error) {
+                    return {
+                        title: "Web App Manifest",
+                        status: "error",
+                        message: `Error parsing manifest: ${error.message}`,
+                        details: `Manifest URL: ${manifestHref}`
+                    };
+                }
+            } catch (error) {
+                return {
+                    title: "Web App Manifest",
+                    status: "error",
+                    message: `Unexpected error: ${error.message}`,
+                    details: error.stack
+                };
+            }
+        }
+
+        // Test for service worker
+        async function testServiceWorker() {
+            if (!('serviceWorker' in navigator)) {
+                return {
+                    title: "Service Worker",
+                    status: "error",
+                    message: "Service Workers are not supported in this browser",
+                    details: "Your browser needs to support Service Workers for PWA installation"
+                };
+            }
+
+            try {
+                const registrations = await navigator.serviceWorker.getRegistrations();
+
+                if (registrations.length === 0) {
+                    return {
+                        title: "Service Worker",
+                        status: "error",
+                        message: "No Service Worker is registered",
+                        details: "Check your service worker registration code"
+                    };
+                }
+
+                // Find service worker for this page
+                const scope = window.location.pathname;
+                const matchingReg = registrations.find(reg =>
+                    scope.startsWith(new URL(reg.scope).pathname));
+
+                if (!matchingReg) {
+                    return {
+                        title: "Service Worker",
+                        status: "error",
+                        message: "No Service Worker is controlling this page",
+                        details: `Current path: ${scope}, Registered scopes: ${registrations.map(r => r.scope).join(', ')}`
+                    };
+                }
+
+                const state = matchingReg.active ? 'active' :
+                              matchingReg.installing ? 'installing' :
+                              matchingReg.waiting ? 'waiting' : 'unknown';
+
+                if (state !== 'active') {
+                    return {
+                        title: "Service Worker",
+                        status: "warn",
+                        message: `Service Worker is registered but not active (state: ${state})`,
+                        details: `The service worker needs to be active to enable installation`
+                    };
+                }
+
+                return {
+                    title: "Service Worker",
+                    status: "success",
+                    message: "Service Worker is registered and active",
+                    details: `Scope: ${matchingReg.scope}, State: ${state}`
+                };
+            } catch (error) {
+                return {
+                    title: "Service Worker",
+                    status: "error",
+                    message: `Error checking Service Worker: ${error.message}`,
+                    details: error.stack
+                };
+            }
+        }
+
+        // Test installation eligibility
+        async function testInstallation() {
+            // Test if beforeinstallprompt works
+            let beforeInstallPromptFired = false;
+
+            window.addEventListener('beforeinstallprompt', (e) => {
+                beforeInstallPromptFired = true;
+                console.log('beforeinstallprompt event fired');
+            });
+
+            // Check if already installed
+            const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+                                 window.navigator.standalone === true;
+
+            if (isStandalone) {
+                return {
+                    title: "Installation Status",
+                    status: "warn",
+                    message: "Your app appears to be already installed",
+                    details: "The app is running in standalone mode, which means it's already installed"
+                };
+            }
+
+            // Give a little time for beforeinstallprompt to fire if it's going to
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            if (beforeInstallPromptFired) {
+                return {
+                    title: "Installation Status",
+                    status: "success",
+                    message: "Your app is eligible for installation (beforeinstallprompt fired)",
+                    details: "The browser has determined your app meets the criteria for installation"
+                };
+            } else {
+                return {
+                    title: "Installation Status",
+                    status: "warn",
+                    message: "beforeinstallprompt event did not fire",
+                    details: "This could mean the app doesn't meet all installation criteria, or that the user has already dismissed the prompt"
+                };
+            }
+        }
+
+        // Test app criteria
+        async function testAppCriteria() {
+            // Basic user engagement check
+            const visitStart = Date.now();
+            const engagementTime = 30000; // 30 seconds
+
+            return {
+                title: "User Engagement",
+                status: "warn",
+                message: "User engagement may affect installation eligibility",
+                details: `Chrome may require users to engage with the site before offering installation. Try spending at least 30 seconds using the site actively before looking for install options.`
+            };
+        }
+
+        // Check if icons are accessible
+        async function testIcons() {
+            try {
+                const manifestLinks = document.querySelectorAll('link[rel="manifest"]');
+                if (manifestLinks.length === 0) {
+                    return {
+                        title: "Icon Accessibility",
+                        status: "error",
+                        message: "No manifest found to check icons",
+                        details: null
+                    };
+                }
+
+                const manifestHref = manifestLinks[0].href;
+                const response = await fetch(manifestHref);
+
+                if (!response.ok) {
+                    return {
+                        title: "Icon Accessibility",
+                        status: "error",
+                        message: "Could not fetch manifest to check icons",
+                        details: null
+                    };
+                }
+
+                const manifest = await response.json();
+
+                if (!manifest.icons || !Array.isArray(manifest.icons) || manifest.icons.length === 0) {
+                    return {
+                        title: "Icon Accessibility",
+                        status: "error",
+                        message: "No icons defined in manifest",
+                        details: null
+                    };
+                }
+
+                const iconResults = await Promise.all(manifest.icons.map(async icon => {
+                    // Resolve icon path relative to manifest
+                    const manifestUrl = new URL(manifestHref);
+                    const iconUrl = new URL(icon.src, manifestUrl);
+
+                    try {
+                        const iconResponse = await fetch(iconUrl.href);
+                        return {
+                            src: icon.src,
+                            sizes: icon.sizes,
+                            status: iconResponse.ok ? 'success' : 'error',
+                            statusCode: iconResponse.status,
+                            type: iconResponse.headers.get('content-type')
+                        };
+                    } catch (error) {
+                        return {
+                            src: icon.src,
+                            sizes: icon.sizes,
+                            status: 'error',
+                            error: error.message
+                        };
+                    }
+                }));
+
+                const allIconsAccessible = iconResults.every(icon => icon.status === 'success');
+
+                return {
+                    title: "Icon Accessibility",
+                    status: allIconsAccessible ? "success" : "error",
+                    message: allIconsAccessible ?
+                        "All icons are accessible" :
+                        "Some icons are not accessible",
+                    details: iconResults
+                };
+            } catch (error) {
+                return {
+                    title: "Icon Accessibility",
+                    status: "error",
+                    message: `Error checking icons: ${error.message}`,
+                    details: error.stack
+                };
+            }
+        }
+
+        // Run all tests
+        async function runAllTests() {
+            resultsContainer.innerHTML = '<p>Running tests...</p>';
+
+            const tests = [
+                testHttps(),
+                testManifest(),
+                testServiceWorker(),
+                testIcons(),
+                testInstallation(),
+                testAppCriteria()
+            ];
+
+            const results = await Promise.all(tests);
+
+            resultsContainer.innerHTML = '';
+            results.forEach(result => {
+                resultsContainer.appendChild(createResultEntry(
+                    result.title,
+                    result.status,
+                    result.message,
+                    result.details
+                ));
+            });
+
+            // Add remediation actions if needed
+            const hasErrors = results.some(r => r.status === 'error');
+            if (hasErrors) {
+                const actionsDiv = document.createElement('div');
+                actionsDiv.className = 'test-item';
+
+                const actionsTitle = document.createElement('h3');
+                actionsTitle.textContent = "Recommended Actions";
+                actionsDiv.appendChild(actionsTitle);
+
+                const actionsList = document.createElement('ul');
+
+                // Add unregister service worker action
+                const unregisterItem = document.createElement('li');
+                const unregisterButton = document.createElement('button');
+                unregisterButton.textContent = "Unregister Service Worker";
+                unregisterButton.addEventListener('click', async () => {
+                    try {
+                        const registrations = await navigator.serviceWorker.getRegistrations();
+                        await Promise.all(registrations.map(reg => reg.unregister()));
+                        alert(`Unregistered ${registrations.length} service worker(s)`);
+                        location.reload();
+                    } catch (e) {
+                        alert(`Error: ${e.message}`);
+                    }
+                });
+                unregisterItem.appendChild(unregisterButton);
+                unregisterItem.appendChild(document.createTextNode(" - Try this if service worker issues are detected"));
+                actionsList.appendChild(unregisterItem);
+
+                // Add clear cache action
+                const clearCacheItem = document.createElement('li');
+                const clearCacheButton = document.createElement('button');
+                clearCacheButton.textContent = "Clear Caches";
+                clearCacheButton.addEventListener('click', async () => {
+                    try {
+                        const cacheNames = await caches.keys();
+                        await Promise.all(cacheNames.map(name => caches.delete(name)));
+                        alert(`Cleared ${cacheNames.length} cache(s)`);
+                        location.reload();
+                    } catch (e) {
+                        alert(`Error: ${e.message}`);
+                    }
+                });
+                clearCacheItem.appendChild(clearCacheButton);
+                clearCacheItem.appendChild(document.createTextNode(" - Clear all cached data for this site"));
+                actionsList.appendChild(clearCacheItem);
+
+                // Add force register SW action
+                const registerItem = document.createElement('li');
+                const registerButton = document.createElement('button');
+                registerButton.textContent = "Force Register Service Worker";
+                registerButton.addEventListener('click', async () => {
+                    try {
+                        const registration = await navigator.serviceWorker.register('./service-worker.js', {
+                            scope: './',
+                            updateViaCache: 'none'
+                        });
+                        alert(`Service worker registered with scope: ${registration.scope}`);
+                        location.reload();
+                    } catch (e) {
+                        alert(`Error: ${e.message}`);
+                    }
+                });
+                registerItem.appendChild(registerButton);
+                registerItem.appendChild(document.createTextNode(" - Attempt to manually register the service worker"));
+                actionsList.appendChild(registerItem);
+
+                actionsDiv.appendChild(actionsList);
+                resultsContainer.appendChild(actionsDiv);
+            }
+        }
+
+        document.getElementById('run-tests').addEventListener('click', runAllTests);
+    </script>
+</body>
+</html>

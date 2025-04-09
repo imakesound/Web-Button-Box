@@ -19,86 +19,259 @@ function generateButtonNoteURLs(toneName) {
 }
 
 /**
- * Initializes the Web Audio API AudioContext.
+ * Flag to avoid multiple audio initialization attempts
  */
-function initAudioContext() {
-    if (!audioContext) {
-        try {
-            audioContext = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: "interactive" });
-            console.log(`AudioContext created. State: ${audioContext.state}`);
+let isAudioInitializing = false;
+
+/**
+ * Initializes the Web Audio API AudioContext.
+ *
+ * @param {boolean} [forceInit=false] - Whether to force initialization regardless of current state
+ * @returns {Promise<boolean>} - Resolves to true if initialization was successful
+ */
+function initAudioContext(forceInit = false) {
+    return new Promise((resolve) => {
+        // Prevent multiple simultaneous initialization attempts
+        if (isAudioInitializing && !forceInit) {
+            console.log("Audio initialization already in progress");
+            resolve(false);
+            return;
+        }
+
+        isAudioInitializing = true;
+
+        // If context already exists, try to resume it
+        if (audioContext && !forceInit) {
+            console.log(`AudioContext exists. Current state: ${audioContext.state}`);
             if (audioContext.state === 'running') {
-                loadSamplesForTone(currentToneName); // Assumes global var exists
+                console.log("AudioContext already running");
+                isAudioInitializing = false;
+                resolve(true);
+                return;
             } else {
-                console.log("AudioContext suspended. Waiting for user interaction.");
-                document.addEventListener('click', resumeAudioContext, { once: true, capture: true });
-                document.addEventListener('touchstart', resumeAudioContext, { once: true, capture: true });
+                // Try to resume existing context
+                audioContext.resume().then(() => {
+                    console.log("AudioContext resumed successfully");
+                    if (Object.keys(audioBuffers).length === 0) {
+                        console.log("Audio buffers empty, loading samples...");
+                        loadSamplesForTone(currentToneName).then(() => {
+                            isAudioInitializing = false;
+                            resolve(true);
+                        });
+                    } else {
+                        console.log("Audio buffers already loaded");
+                        isAudioInitializing = false;
+                        resolve(true);
+                    }
+                }).catch(e => {
+                    console.error("Failed to resume AudioContext", e);
+                    isAudioInitializing = false;
+                    resolve(false);
+                });
+                return;
+            }
+        }
+
+        // Create new context if needed
+        try {
+            if (!audioContext || forceInit) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: "interactive" });
+                console.log(`New AudioContext created. State: ${audioContext.state}`);
+            }
+
+            if (audioContext.state === 'running') {
+                console.log("New AudioContext is running, loading samples");
+                loadSamplesForTone(currentToneName).then(() => {
+                    isAudioInitializing = false;
+                    resolve(true);
+                });
+            } else {
+                console.log("AudioContext suspended, will resume on user interaction");
+                isAudioInitializing = false;
+                resolve(false);
             }
         } catch (e) {
             console.error("Web Audio API is not supported", e);
             alert("Web Audio API is not supported in this browser.");
-            if(loadingIndicator) { loadingIndicator.textContent = "Error: Web Audio Not Supported"; loadingIndicator.style.display = 'block'; }
+            if(loadingIndicator) {
+                loadingIndicator.textContent = "Error: Web Audio Not Supported";
+                loadingIndicator.style.display = 'block';
+            }
+            isAudioInitializing = false;
+            resolve(false);
         }
-    }
+    });
 }
 
 /**
  * Attempts to resume a suspended AudioContext.
+ *
+ * @returns {Promise<boolean>} - Resolves to true if resumption was successful
  */
 function resumeAudioContext() {
-    if (audioContext && audioContext.state === 'suspended') {
+    return new Promise((resolve) => {
+        if (!audioContext) {
+            console.log("No AudioContext to resume, initializing new one");
+            initAudioContext(true).then(resolve);
+            return;
+        }
+
+        if (audioContext.state === 'running') {
+            console.log("AudioContext already running");
+            if (Object.keys(audioBuffers).length === 0) {
+                console.log("Audio buffers empty, loading samples...");
+                loadSamplesForTone(currentToneName).then(() => resolve(true));
+            } else {
+                resolve(true);
+            }
+            return;
+        }
+
         console.log("Attempting to resume AudioContext...");
         audioContext.resume().then(() => {
             console.log("AudioContext resumed successfully.");
             if (Object.keys(audioBuffers).length === 0) {
                 console.log("Audio buffers empty, loading samples...");
-                loadSamplesForTone(currentToneName); // Assumes global var exists
+                loadSamplesForTone(currentToneName).then(() => resolve(true));
             } else {
                 console.log("Audio buffers already loaded.");
+                resolve(true);
             }
         }).catch(e => {
             console.error("Error resuming AudioContext:", e);
-            if(statusDiv) statusDiv.textContent = "Error starting audio.";
+            if(statusDiv) statusDiv.textContent = "Error starting audio. Try again.";
+            resolve(false);
         });
-    }
-    // Clean up listeners after first attempt
-    document.removeEventListener('click', resumeAudioContext, { capture: true });
-    document.removeEventListener('touchstart', resumeAudioContext, { capture: true });
+    });
+}
+
+/**
+ * Setup event listeners for audio context initialization
+ */
+function setupAudioContextListeners() {
+    // These events require user interaction so we can use them to initialize audio
+    const events = ['touchstart', 'mousedown', 'keydown'];
+
+    const initAudioOnInteraction = async function(e) {
+        console.log(`User interaction detected (${e.type}), initializing audio...`);
+        const success = await resumeAudioContext();
+
+        if (success) {
+            console.log("Audio initialized successfully on user interaction");
+            // Remove the listeners once successfully initialized
+            events.forEach(eventType => {
+                document.removeEventListener(eventType, initAudioOnInteraction, true);
+            });
+        }
+    };
+
+    // Add capture listeners for these events (we want to be the first to get them)
+    events.forEach(eventType => {
+        document.addEventListener(eventType, initAudioOnInteraction, {
+            capture: true,
+            once: false // Don't use 'once' as the first interaction might not succeed on iOS
+        });
+    });
+
+    console.log("Audio context initialization listeners set up");
 }
 
 /**
  * Loads audio samples for a given accordion tone.
  * @param {string} toneName - The name of the tone directory (e.g., 'FBE').
+ * @returns {Promise<boolean>} - Resolves to true if loading was successful
  */
 async function loadSamplesForTone(toneName) {
-    if (!audioContext || audioContext.state !== 'running') {
-        console.warn(`Cannot load samples for ${toneName}, AudioContext not running. State: ${audioContext?.state}`);
-        return;
+    if (!audioContext) {
+        console.warn(`Cannot load samples for ${toneName}, AudioContext not created.`);
+        return false;
     }
+
+    if (audioContext.state !== 'running') {
+        console.warn(`Cannot load samples for ${toneName}, AudioContext not running. State: ${audioContext?.state}`);
+        try {
+            await audioContext.resume();
+            console.log("AudioContext resumed before loading samples");
+        } catch (e) {
+            console.error("Failed to resume AudioContext before loading samples:", e);
+            return false;
+        }
+    }
+
     const buttonURLs = generateButtonNoteURLs(toneName);
-    if(loadingIndicator) { loadingIndicator.textContent = `Loading ${toneName} samples...`; loadingIndicator.style.display = 'block'; }
+    if(loadingIndicator) {
+        loadingIndicator.textContent = `Loading ${toneName} samples...`;
+        loadingIndicator.style.display = 'block';
+    }
+
     console.log(`Starting sample loading for tone: ${toneName}...`);
     audioBuffers = {}; // Clear existing buffers
-    let loadedCount = 0; let failedCount = 0;
+    let loadedCount = 0;
+    let failedCount = 0;
     const totalSamples = Object.keys(buttonURLs).length * 2;
-    const loadPromises = Object.entries(buttonURLs).flatMap(([buttonId, urls]) => [
-        fetch(urls.pushUrl)
-        .then(response => { if (!response.ok) throw new Error(`HTTP ${response.status} for ${urls.pushUrl}`); return response.arrayBuffer(); })
-        .then(arrayBuffer => audioContext.decodeAudioData(arrayBuffer))
-        .then(decodedBuffer => { if (!audioBuffers[buttonId]) audioBuffers[buttonId] = { push: null, pull: null }; audioBuffers[buttonId].push = decodedBuffer; loadedCount++; })
-        .catch(error => { console.warn(`Failed PUSH sample ${buttonId}:`, error.message); if (!audioBuffers[buttonId]) audioBuffers[buttonId] = { push: null, pull: null }; failedCount++; }),
-                                                            fetch(urls.pullUrl)
-                                                            .then(response => { if (!response.ok) throw new Error(`HTTP ${response.status} for ${urls.pullUrl}`); return response.arrayBuffer(); })
-                                                            .then(arrayBuffer => audioContext.decodeAudioData(arrayBuffer))
-                                                            .then(decodedBuffer => { if (!audioBuffers[buttonId]) audioBuffers[buttonId] = { push: null, pull: null }; audioBuffers[buttonId].pull = decodedBuffer; loadedCount++; })
-                                                            .catch(error => { console.warn(`Failed PULL sample ${buttonId}:`, error.message); if (!audioBuffers[buttonId]) audioBuffers[buttonId] = { push: null, pull: null }; failedCount++; })
-    ]);
-    await Promise.allSettled(loadPromises);
-    console.log(`Loading finished for ${toneName}. Loaded: ${loadedCount}, Failed: ${failedCount}, Total Expected: ${totalSamples}`);
-    if(loadingIndicator) {
-        loadingIndicator.textContent = `Audio loaded (${toneName})`;
-        setTimeout(() => { if(loadingIndicator) loadingIndicator.style.display = 'none'; }, 1500);
+
+    try {
+        const loadPromises = Object.entries(buttonURLs).flatMap(([buttonId, urls]) => [
+            fetch(urls.pushUrl)
+            .then(response => {
+                if (!response.ok) throw new Error(`HTTP ${response.status} for ${urls.pushUrl}`);
+                return response.arrayBuffer();
+            })
+            .then(arrayBuffer => audioContext.decodeAudioData(arrayBuffer))
+            .then(decodedBuffer => {
+                if (!audioBuffers[buttonId]) audioBuffers[buttonId] = { push: null, pull: null };
+                audioBuffers[buttonId].push = decodedBuffer;
+                loadedCount++;
+            })
+            .catch(error => {
+                console.warn(`Failed PUSH sample ${buttonId}:`, error.message);
+                if (!audioBuffers[buttonId]) audioBuffers[buttonId] = { push: null, pull: null };
+                failedCount++;
+            }),
+
+            fetch(urls.pullUrl)
+            .then(response => {
+                if (!response.ok) throw new Error(`HTTP ${response.status} for ${urls.pullUrl}`);
+                return response.arrayBuffer();
+            })
+            .then(arrayBuffer => audioContext.decodeAudioData(arrayBuffer))
+            .then(decodedBuffer => {
+                if (!audioBuffers[buttonId]) audioBuffers[buttonId] = { push: null, pull: null };
+                audioBuffers[buttonId].pull = decodedBuffer;
+                loadedCount++;
+            })
+            .catch(error => {
+                console.warn(`Failed PULL sample ${buttonId}:`, error.message);
+                if (!audioBuffers[buttonId]) audioBuffers[buttonId] = { push: null, pull: null };
+                failedCount++;
+            })
+        ]);
+
+        await Promise.allSettled(loadPromises);
+
+        console.log(`Loading finished for ${toneName}. Loaded: ${loadedCount}, Failed: ${failedCount}, Total Expected: ${totalSamples}`);
+        if(loadingIndicator) {
+            loadingIndicator.textContent = `Audio loaded (${toneName})`;
+            setTimeout(() => {
+                if(loadingIndicator) loadingIndicator.style.display = 'none';
+            }, 1500);
+        }
+
+        if (audioContext.state === 'suspended') {
+            console.warn("AudioContext suspended after loading samples.");
+        }
+
+        return loadedCount > 0;
+    } catch (e) {
+        console.error(`Error loading samples for ${toneName}:`, e);
+        if(loadingIndicator) {
+            loadingIndicator.textContent = `Error loading ${toneName} samples`;
+            setTimeout(() => {
+                if(loadingIndicator) loadingIndicator.style.display = 'none';
+            }, 1500);
+        }
+        return false;
     }
-    if (audioContext.state === 'suspended') console.warn("AudioContext suspended after loading samples.");
 }
 
 
@@ -114,10 +287,32 @@ function playManualSound(id, isPlaybackCall = false, isBellowsChangeRestart = fa
         if (isPlaying) stopPlayback();
         if (isRecordingPlayback) stopRecordingPlayback();
     }
+
+    // First, check if audio is ready and handle initialization if necessary
     if (!audioContext || audioContext.state !== 'running') {
-        console.warn("AudioContext not running, cannot play sound.");
+        console.log("Audio not ready, attempting to initialize...");
+
+        // Show status if not already visible
+        if(statusDiv && !isPlaybackCall && !isBellowsChangeRestart) {
+            statusDiv.textContent = "Initializing audio...";
+        }
+
+        // Try to resume audio context
+        resumeAudioContext().then(success => {
+            if (success) {
+                console.log("Audio initialized successfully, retrying sound playback");
+                playManualSound(id, isPlaybackCall, isBellowsChangeRestart);
+            } else {
+                console.warn("Could not initialize audio, cannot play sound");
+                if(statusDiv && !isPlaybackCall && !isBellowsChangeRestart) {
+                    statusDiv.textContent = "Tap buttons to initialize audio";
+                }
+            }
+        });
         return;
     }
+
+    // Record this press if we're recording
     if (isRecording && !isPlaybackCall && !isBellowsChangeRestart) {
         const time = audioContext.currentTime - recordingStartTime;
         recordedEvents.push({ time: time, type: 'press', id: id, mode: currentBellowsMode });
@@ -127,7 +322,7 @@ function playManualSound(id, isPlaybackCall = false, isBellowsChangeRestart = fa
     const bufferData = audioBuffers[id];
     const buffer = bufferData?.[currentBellowsMode]; // Uses currentBellowsMode global
 
-    // <<< Log Buffer Lookup Result >>>
+    // Log Buffer Lookup Result
     console.log(`playManualSound: Buffer lookup for Btn: ${id} (${currentBellowsMode}):`, buffer ? 'Found' : 'NOT FOUND');
 
     if (!buffer) {
@@ -140,15 +335,23 @@ function playManualSound(id, isPlaybackCall = false, isBellowsChangeRestart = fa
     stopManualSound(id, immediateStop, isBellowsChangeRestart); // Assumes stopManualSound exists
 
     const now = audioContext.currentTime;
-    const gainNode = audioContext.createGain(); gainNode.gain.setValueAtTime(0.6, now);
-    const source = audioContext.createBufferSource(); source.buffer = buffer;
+    const gainNode = audioContext.createGain();
+    gainNode.gain.setValueAtTime(0.6, now);
+
+    const source = audioContext.createBufferSource();
+    source.buffer = buffer;
 
     // Looping logic for manual play
     if (buffer.duration > 1.0 && !isPlaybackCall && !isBellowsChangeRestart && !isPlaying && !isRecordingPlayback) {
-        source.loop = true; source.loopStart = 1.0; source.loopEnd = buffer.duration;
-    } else { source.loop = false; }
+        source.loop = true;
+        source.loopStart = 1.0;
+        source.loopEnd = buffer.duration;
+    } else {
+        source.loop = false;
+    }
 
-    source.connect(gainNode); gainNode.connect(audioContext.destination);
+    source.connect(gainNode);
+    gainNode.connect(audioContext.destination);
     source.start(now);
     activeManualSources[id] = { source, gainNode }; // Store reference
 }
@@ -193,18 +396,43 @@ function updateProgressIndicator(elapsedSeconds, totalSeconds) {
     progressDisplayElement.textContent = `${elapsedFormatted} / ${totalFormatted}`;
 }
 
-// Ensure generateButtonNoteURLs exists if not defined elsewhere
-if (typeof generateButtonNoteURLs === 'undefined') {
-    function generateButtonNoteURLs(toneName) { /* ... implementation ... */ }
-}
+// Set up the audio context listeners on script load
+document.addEventListener('DOMContentLoaded', () => {
+    console.log("Setting up audio initialization listeners");
+    setupAudioContextListeners();
+
+    // Add a clear audio initialization button for mobile
+    if (loadingIndicator && loadingIndicator.parentNode) {
+        const initAudioButton = document.createElement('button');
+        initAudioButton.id = 'init-audio-button';
+        initAudioButton.className = 'control-button';
+        initAudioButton.textContent = 'Initialize Audio';
+        initAudioButton.style.marginTop = '10px';
+        initAudioButton.style.width = '100%';
+
+        initAudioButton.addEventListener('click', async () => {
+            console.log("Manual audio initialization requested");
+            const success = await resumeAudioContext();
+            if (success) {
+                initAudioButton.textContent = 'Audio Initialized ✓';
+                initAudioButton.disabled = true;
+                setTimeout(() => {
+                    initAudioButton.style.display = 'none';
+                }, 2000);
+            } else {
+                initAudioButton.textContent = 'Try Again to Initialize Audio';
+            }
+        });
+
+        loadingIndicator.parentNode.insertBefore(initAudioButton, loadingIndicator.nextSibling);
+    }
+});
+
 // Ensure formatTime exists if not defined elsewhere (e.g., main.js)
 if (typeof formatTime === 'undefined') {
-    function formatTime(totalSeconds) { /* ... implementation ... */ }
+    function formatTime(totalSeconds) {
+        const minutes = Math.floor(totalSeconds / 60);
+        const seconds = Math.floor(totalSeconds % 60);
+        return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    }
 }
-// Ensure necessary global variables are declared (usually in main.js)
-// let audioContext, audioBuffers = {}, activeManualSources = {}, currentBellowsMode = 'push';
-// let isRecording, recordingStartTime, recordedEvents = [];
-// let isPlaying, isRecordingPlayback;
-// let loadingIndicator, progressDisplayElement, statusDiv;
-// Assume stopPlayback, stopRecordingPlayback exist
-

@@ -4,9 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Web Button Accordion - UI Revamp</title>
+
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1a202c">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Web Accordion">
+    <link rel="apple-touch-icon" href="icons/icon-152x152.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192x192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512x512.png">
+    <link rel="shortcut icon" href="icons/icon-192x192.png">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/opensheetmusicdisplay@1.8.4/build/opensheetmusicdisplay.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
+
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body class="flex flex-col min-h-screen max-h-screen font-['Inter'] overflow-hidden bg-[--body-bg] text-[--text-color-base]">
@@ -34,43 +46,166 @@
                      <div id="custom-highlight"></div>
                  </div>
             </div>
-        </div> <div id="controls-sidebar" class="fixed inset-y-0 right-0 z-40 w-72 md:w-80 lg:w-96 bg-[--board-bg] p-4 overflow-y-auto
+        </div>
+
+        <div id="controls-sidebar" class="fixed inset-y-0 right-0 z-40 w-72 md:w-80 lg:w-96 bg-[--board-bg] p-4 overflow-y-auto
                                          transform translate-x-full transition-transform duration-300 ease-in-out
                                          md:relative md:translate-x-0 md:flex md:flex-col md:gap-4 md:flex-shrink-0 md:order-2 md:border-l md:border-[--button-border]">
             <h2 class="text-lg font-semibold text-center text-[--text-color-base] mb-2">Controls</h2>
-            <div class="control-section"> <h3 class="control-section-title">General</h3>
-                 <div class="control-group"> <label for="theme-select">Theme:</label> <select name="themes" id="theme-select" class="control-select"> <option value="dark">Dark</option> <option value="light">Light</option> <option value="mexico">Mexico</option> </select> </div>
-                 <div class="control-group"> <label for="tone-select">Tone:</label> <select name="tones" id="tone-select" class="control-select"> <option value="FBE" selected>FBE</option> <option value="GCF">GCF</option> </select> </div>
+
+            <div class="control-section">
+                 <h3 class="control-section-title">General</h3>
+                 <div class="control-group">
+                     <label for="theme-select">Theme:</label>
+                     <select name="themes" id="theme-select" class="control-select">
+                         <option value="dark">Dark</option>
+                         <option value="light">Light</option>
+                         <option value="mexico">Mexico</option>
+                     </select>
+                 </div>
+                 <div class="control-group">
+                     <label for="tone-select">Tone:</label>
+                     <select name="tones" id="tone-select" class="control-select">
+                         <option value="FBE" selected>FBE</option>
+                         <option value="GCF">GCF</option>
+                     </select>
+                 </div>
                  <button id="toggle-sheet-music" class="control-button" title="Show/Hide Sheet Music">Show Music</button>
-            </div>
-            <div class="control-section"> <h3 class="control-section-title">Music Playback</h3>
-                 <div class="control-group file-input-group"> <label for="musicxml-file" class="control-button">Load Score File</label> <input type="file" id="musicxml-file" accept=".musicxml,.xml"> </div>
-                 <div class="control-group"> <label for="xml-preset-select">Load Preset:</label> <select id="xml-preset-select" class="control-select"> <option value="">-- Select Preset --</option> </select> <button id="load-preset-btn" class="control-button">Load</button> </div>
-                 <div class="control-group button-group"> <button id="play-btn" class="control-button" disabled>Play (Strict)</button> <button id="play-sub-btn" class="control-button" disabled>Play All (Subs)</button> <button id="stop-btn" class="control-button" disabled>Stop</button> </div>
-                 <div class="control-group loop-group"> <input type="checkbox" id="loop-checkbox"> <label for="loop-checkbox" class="loop-label">Loop Music</label> <label for="loop-start-measure" class="loop-label">Start:</label> <input type="number" id="loop-start-measure" class="measure-input" min="1" value="1"> <label for="loop-end-measure" class="loop-label">End:</label> <input type="number" id="loop-end-measure" class="measure-input" min="1" value="1"> </div>
-                 <div class="control-group"> <label for="speed-slider">Music Speed:</label> <input type="range" id="speed-slider" min="0.1" max="2.0" step="0.05" value="1.0"> <span id="speed-display">1.00x</span> </div>
+                 <button id="cache-tone-btn" class="control-button" title="Refresh all tone sets for offline use">Refresh Offline Cache</button>
+                 </div>
+
+            <div class="control-section">
+                 <h3 class="control-section-title">Music Playback</h3>
+                 <div class="control-group file-input-group">
+                     <label for="musicxml-file" class="control-button">Load Score File</label>
+                     <input type="file" id="musicxml-file" accept=".musicxml,.xml">
+                 </div>
+                 <div class="control-group">
+                     <label for="xml-preset-select">Load Preset:</label>
+                     <select id="xml-preset-select" class="control-select">
+                         <option value="">-- Select Preset --</option>
+                         </select>
+                     <button id="load-preset-btn" class="control-button">Load</button>
+                 </div>
+                 <div class="control-group button-group">
+                     <button id="play-btn" class="control-button" disabled>Play (Strict)</button>
+                     <button id="play-sub-btn" class="control-button" disabled>Play All (Subs)</button>
+                     <button id="stop-btn" class="control-button" disabled>Stop</button>
+                 </div>
+                 <div class="control-group loop-group">
+                     <input type="checkbox" id="loop-checkbox">
+                     <label for="loop-checkbox" class="loop-label">Loop Music</label>
+                     <label for="loop-start-measure" class="loop-label">Start:</label>
+                     <input type="number" id="loop-start-measure" class="measure-input" min="1" value="1">
+                     <label for="loop-end-measure" class="loop-label">End:</label>
+                     <input type="number" id="loop-end-measure" class="measure-input" min="1" value="1">
+                 </div>
+                 <div class="control-group">
+                     <label for="speed-slider">Music Speed:</label>
+                     <input type="range" id="speed-slider" min="0.1" max="2.0" step="0.05" value="1.0">
+                     <span id="speed-display">1.00x</span>
+                 </div>
                  <div id="playback-status" class="status-display">Status: Ready</div>
                  <div id="playback-progress-display" class="progress-display">--:-- / --:--</div>
             </div>
-            <div class="control-section"> <h3 class="control-section-title">Recording</h3>
-                 <div class="control-group button-group"> <button id="record-btn" class="control-button">Record</button> <button id="play-rec-btn" class="control-button" disabled>Play Rec</button> <button id="stop-rec-btn" class="control-button" disabled>Stop Rec</button> </div>
-                 <div class="control-group loop-group"> <input type="checkbox" id="rec-loop-checkbox" disabled> <label for="rec-loop-checkbox" class="loop-label">Loop Rec</label> <label for="rec-loop-start-time" class="loop-label">Start(s):</label> <input type="number" id="rec-loop-start-time" class="time-input" min="0" step="0.1" value="0" disabled> <label for="rec-loop-end-time" class="loop-label">End(s):</label> <input type="number" id="rec-loop-end-time" class="time-input" min="0" step="0.1" value="0" disabled> </div>
-                 <div class="control-group"> <label for="rec-speed-slider">Rec Speed:</label> <input type="range" id="rec-speed-slider" min="0.1" max="2.0" step="0.05" value="1.0"> <span id="rec-speed-display">1.00x</span> </div>
-                 <div class="control-group button-group"> <button id="save-rec-btn" class="control-button" disabled>Save Rec</button> <button id="download-rec-btn" class="control-button" disabled>Download Rec</button> </div>
-                 <div class="control-group file-input-group"> <label for="load-rec-file-input" id="load-rec-file-label" class="control-button">Upload Rec File</label> <input type="file" id="load-rec-file-input" accept=".json,application/json"> </div>
-                 <div class="control-group"> <label for="recording-select">Load Saved:</label> <select id="recording-select" class="control-select"> <option value="">-- Select --</option> </select> </div>
-                 <div class="control-group button-group"> <button id="load-rec-btn" class="control-button" disabled>Load</button> <button id="rename-rec-btn" class="control-button" disabled>Rename</button> <button id="delete-rec-btn" class="control-button" disabled>Delete</button> </div>
+
+            <div class="control-section">
+                 <h3 class="control-section-title">Recording</h3>
+                 <div class="control-group button-group">
+                     <button id="record-btn" class="control-button">Record</button>
+                     <button id="play-rec-btn" class="control-button" disabled>Play Rec</button>
+                     <button id="stop-rec-btn" class="control-button" disabled>Stop Rec</button>
+                 </div>
+                 <div class="control-group loop-group">
+                     <input type="checkbox" id="rec-loop-checkbox" disabled>
+                     <label for="rec-loop-checkbox" class="loop-label">Loop Rec</label>
+                     <label for="rec-loop-start-time" class="loop-label">Start(s):</label>
+                     <input type="number" id="rec-loop-start-time" class="time-input" min="0" step="0.1" value="0" disabled>
+                     <label for="rec-loop-end-time" class="loop-label">End(s):</label>
+                     <input type="number" id="rec-loop-end-time" class="time-input" min="0" step="0.1" value="0" disabled>
+                 </div>
+                 <div class="control-group">
+                     <label for="rec-speed-slider">Rec Speed:</label>
+                     <input type="range" id="rec-speed-slider" min="0.1" max="2.0" step="0.05" value="1.0">
+                     <span id="rec-speed-display">1.00x</span>
+                 </div>
+                 <div class="control-group button-group">
+                     <button id="save-rec-btn" class="control-button" disabled>Save Rec</button>
+                     <button id="download-rec-btn" class="control-button" disabled>Download Rec</button>
+                 </div>
+                 <div class="control-group file-input-group">
+                     <label for="load-rec-file-input" id="load-rec-file-label" class="control-button">Upload Rec File</label>
+                     <input type="file" id="load-rec-file-input" accept=".json,application/json">
+                 </div>
+                 <div class="control-group">
+                     <label for="recording-select">Load Saved:</label>
+                     <select id="recording-select" class="control-select">
+                         <option value="">-- Select --</option>
+                         </select>
+                 </div>
+                 <div class="control-group button-group">
+                     <button id="load-rec-btn" class="control-button" disabled>Load</button>
+                     <button id="rename-rec-btn" class="control-button" disabled>Rename</button>
+                     <button id="delete-rec-btn" class="control-button" disabled>Delete</button>
+                 </div>
             </div>
+
             <div id="loading-indicator">Loading audio samples...</div>
-        </div> </div> <script src="js/main.js"></script>
+            </div>
+    </div>
+
+    <script src="js/main.js"></script>
     <script src="js/audio-engine.js"></script>
     <script src="js/ui-controls.js"></script>
     <script src="js/music-playback.js"></script>
     <script src="js/recording.js"></script>
     <script src="js/storage.js"></script>
     <script src="js/preset-loader.js"></script>
+    <script src="js/pwa-handler.js"></script>
+
     <script>
-        lucide.createIcons();
+        lucide.createIcons(); // Initialize Lucide icons
+
+        // Register Service Worker for PWA functionality (Updated)
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                // Register with the correct scope '/' to match the manifest
+                navigator.serviceWorker.register('./service-worker.js', { scope: '/' })
+                    .then(registration => {
+                        console.log('ServiceWorker registered successfully with scope:', registration.scope);
+
+                        // Optional: Standard check for updates
+                        registration.onupdatefound = () => {
+                            const installingWorker = registration.installing;
+                            if (installingWorker) {
+                                installingWorker.onstatechange = () => {
+                                    if (installingWorker.state === 'installed') {
+                                        if (navigator.serviceWorker.controller) {
+                                            // New update available and the SW is controlling the page
+                                            console.log('New content is available; please refresh.');
+                                            // You could show a UI element here asking the user to refresh
+                                        } else {
+                                            // Content is cached for the first time (offline use)
+                                            console.log('Content is cached for offline use.');
+                                        }
+                                    }
+                                };
+                            }
+                        };
+                    }).catch(error => {
+                        console.error('ServiceWorker registration failed:', error);
+                    });
+            });
+
+            // Optional: Automatically refresh the page when a new service worker takes control
+            let refreshing;
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (refreshing) return; // Prevent multiple refreshes
+                console.log('Controller changed. Reloading page...');
+                window.location.reload();
+                refreshing = true;
+            });
+        }
     </script>
 </body>
 </html>

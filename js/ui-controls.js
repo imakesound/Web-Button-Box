@@ -1,5 +1,43 @@
 // ui-controls.js - Button/bellows interactions, speed controls, theme, sheet music toggle
 
+// --- Theme Persistence Functions ---
+/**
+ * Saves the current theme selection to localStorage
+ * @param {string} themeName - The name of the selected theme (dark, light, mexico)
+ */
+function saveThemePreference(themeName) {
+    try {
+        localStorage.setItem('accordion_theme_preference', themeName);
+        console.log(`Theme preference saved: ${themeName}`);
+    } catch (e) {
+        console.warn('Could not save theme preference to localStorage:', e);
+    }
+}
+
+/**
+ * Loads and applies the saved theme from localStorage
+ */
+function loadThemePreference() {
+    try {
+        const savedTheme = localStorage.getItem('accordion_theme_preference');
+        if (savedTheme && ['dark', 'light', 'mexico'].includes(savedTheme)) {
+            console.log(`Loading saved theme: ${savedTheme}`);
+
+            // Update the body classes
+            body.classList.remove('theme-light', 'theme-mexico');
+            if (savedTheme === 'light') body.classList.add('theme-light');
+            else if (savedTheme === 'mexico') body.classList.add('theme-mexico');
+
+            // Update the dropdown selection
+            if (themeSelect) {
+                themeSelect.value = savedTheme;
+            }
+        }
+    } catch (e) {
+        console.warn('Could not load theme preference from localStorage:', e);
+    }
+}
+
 // --- Button Interaction Handlers ---
 function handlePress(button) {
     if (!button || !button.classList.contains('acc-button')) return;
@@ -135,6 +173,9 @@ function releaseButtonVisually(buttonId) {
 // --- Set up UI event listeners ---
 document.addEventListener('DOMContentLoaded', () => {
     console.log("ui-controls.js: DOMContentLoaded handler executing.");
+
+    // --- Load saved theme preference ---
+    loadThemePreference();
 
     // --- Manual Play Interaction Listeners ---
     // Assumes board, handlePress, handleRelease, handleTouchEndOrCancel, buttons, activeTouches exist
@@ -309,7 +350,7 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("Tone select listener attached.");
     } else { console.error("Could not attach tone select listener - elements or functions missing."); }
 
-    // --- Theme Selection Listener ---
+    // --- Theme Selection Listener with Persistence ---
     // Assumes themeSelect, body exist
     if (themeSelect && body) {
         console.log("Attaching theme select listener.");
@@ -319,8 +360,11 @@ document.addEventListener('DOMContentLoaded', () => {
             body.classList.remove('theme-light', 'theme-mexico');
             if (selectedTheme === 'light') body.classList.add('theme-light');
             else if (selectedTheme === 'mexico') body.classList.add('theme-mexico');
+
+            // Save the theme preference
+            saveThemePreference(selectedTheme);
         });
-            console.log("Theme select listener attached.");
+        console.log("Theme select listener attached.");
     } else { console.error("Could not attach theme select listener - elements missing."); }
 
 

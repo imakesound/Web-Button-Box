@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Button Accordion - UI Revamp</title>
+
+    <!-- PWA Meta Tags -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1a202c">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Web Accordion">
+    <link rel="apple-touch-icon" href="icons/icon-152x152.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192x192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512x512.png">
+    <link rel="shortcut icon" href="icons/icon-192x192.png">
+
+    <!-- External Libraries -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/opensheetmusicdisplay@1.8.4/build/opensheetmusicdisplay.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Stylesheet -->
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="flex flex-col min-h-screen max-h-screen font-['Inter'] overflow-hidden bg-[--body-bg] text-[--text-color-base]">
+
+    <button id="sidebar-toggle" class="fixed top-4 right-4 z-50 p-2 rounded-md bg-[--control-button-bg] text-[--control-button-text] border border-[--control-button-border] hover:opacity-80 transition-opacity md:hidden">
+        <i data-lucide="menu"></i>
+        <span class="sr-only">Toggle Controls</span>
+    </button>
+
+    <div class="flex flex-1 overflow-hidden">
+
+        <div class="flex-grow flex flex-col md:flex-row items-stretch justify-start p-4 gap-4 overflow-hidden order-1">
+
+            <div class="button-board-container flex-shrink-0 order-1">
+                 <div class="button-board">
+                    <div class="button-row"> <button class="acc-button" data-button-id="B1">B1</button> <button class="acc-button" data-button-id="B2">B2</button> <button class="acc-button" data-button-id="B3">B3</button> <button class="acc-button" data-button-id="B4">B4</button> <button class="acc-button" data-button-id="B5">B5</button> <button class="acc-button" data-button-id="B6">B6</button> <button class="acc-button" data-button-id="B7">B7</button> <button class="acc-button" data-button-id="B8">B8</button> <button class="acc-button" data-button-id="B9">B9</button> <button class="acc-button" data-button-id="B10">B10</button> <button class="acc-button" data-button-id="B11">B11</button> </div>
+                    <div class="button-row"> <button class="acc-button" data-button-id="B12">B12</button> <button class="acc-button" data-button-id="B13">B13</button> <button class="acc-button" data-button-id="B14">B14</button> <button class="acc-button" data-button-id="B15">B15</button> <button class="acc-button" data-button-id="B16">B16</button> <button class="acc-button" data-button-id="B17">B17</button> <button class="acc-button" data-button-id="B18">B18</button> <button class="acc-button" data-button-id="B19">B19</button> <button class="acc-button" data-button-id="B20">B20</button> <button class="acc-button" data-button-id="B21">B21</button> <button class="acc-button" data-button-id="B22">B22</button> <button class="acc-button" data-button-id="B23">B23</button> </div>
+                    <div class="button-row"> <button class="acc-button" data-button-id="B24">B24</button> <button class="acc-button" data-button-id="B25">B25</button> <button class="acc-button" data-button-id="B26">B26</button> <button class="acc-button" data-button-id="B27">B27</button> <button class="acc-button" data-button-id="B28">B28</button> <button class="acc-button" data-button-id="B29">B29</button> <button class="acc-button" data-button-id="B30">B30</button> <button class="acc-button" data-button-id="B31">B31</button> <button class="acc-button" data-button-id="B32">B32</button> <button class="acc-button" data-button-id="B33">B33</button> <button class="acc-button" data-button-id="B34">B34</button> </div>
+               </div>
+               <div id="bellows-toggle" title="Hold for PULL sound (Release for PUSH)">P U S H</div>
+            </div>
+
+            <div id="music-sheet-area" class="sheet-music-hidden flex-grow w-full md:w-auto h-full min-h-0 flex flex-col border border-[--button-border] rounded-lg bg-[--body-bg] p-2 order-2">
+                 <div id="osmd-container" class="flex-grow overflow-auto bg-[--osmd-bg] border border-[--button-border] rounded-md mb-2 min-h-0 relative">
+                     <div id="custom-highlight"></div>
+                 </div>
+            </div>
+        </div> <div id="controls-sidebar" class="fixed inset-y-0 right-0 z-40 w-72 md:w-80 lg:w-96 bg-[--board-bg] p-4 overflow-y-auto
+                                         transform translate-x-full transition-transform duration-300 ease-in-out
+                                         md:relative md:translate-x-0 md:flex md:flex-col md:gap-4 md:flex-shrink-0 md:order-2 md:border-l md:border-[--button-border]">
+            <h2 class="text-lg font-semibold text-center text-[--text-color-base] mb-2">Controls</h2>
+            <div class="control-section"> <h3 class="control-section-title">General</h3>
+                 <div class="control-group"> <label for="theme-select">Theme:</label> <select name="themes" id="theme-select" class="control-select"> <option value="dark">Dark</option> <option value="light">Light</option> <option value="mexico">Mexico</option> </select> </div>
+                 <div class="control-group"> <label for="tone-select">Tone:</label> <select name="tones" id="tone-select" class="control-select"> <option value="FBE" selected>FBE</option> <option value="GCF">GCF</option> </select> </div>
+                 <button id="toggle-sheet-music" class="control-button" title="Show/Hide Sheet Music">Show Music</button>
+                 <button id="cache-tone-btn" class="control-button" title="Refresh all tone sets for offline use">Refresh Offline Cache</button>
+            </div>
+            <div class="control-section"> <h3 class="control-section-title">Music Playback</h3>
+                 <div class="control-group file-input-group"> <label for="musicxml-file" class="control-button">Load Score File</label> <input type="file" id="musicxml-file" accept=".musicxml,.xml"> </div>
+                 <div class="control-group"> <label for="xml-preset-select">Load Preset:</label> <select id="xml-preset-select" class="control-select"> <option value="">-- Select Preset --</option> </select> <button id="load-preset-btn" class="control-button">Load</button> </div>
+                 <div class="control-group button-group"> <button id="play-btn" class="control-button" disabled>Play (Strict)</button> <button id="play-sub-btn" class="control-button" disabled>Play All (Subs)</button> <button id="stop-btn" class="control-button" disabled>Stop</button> </div>
+                 <div class="control-group loop-group"> <input type="checkbox" id="loop-checkbox"> <label for="loop-checkbox" class="loop-label">Loop Music</label> <label for="loop-start-measure" class="loop-label">Start:</label> <input type="number" id="loop-start-measure" class="measure-input" min="1" value="1"> <label for="loop-end-measure" class="loop-label">End:</label> <input type="number" id="loop-end-measure" class="measure-input" min="1" value="1"> </div>
+                 <div class="control-group"> <label for="speed-slider">Music Speed:</label> <input type="range" id="speed-slider" min="0.1" max="2.0" step="0.05" value="1.0"> <span id="speed-display">1.00x</span> </div>
+                 <div id="playback-status" class="status-display">Status: Ready</div>
+                 <div id="playback-progress-display" class="progress-display">--:-- / --:--</div>
+            </div>
+            <div class="control-section"> <h3 class="control-section-title">Recording</h3>
+                 <div class="control-group button-group"> <button id="record-btn" class="control-button">Record</button> <button id="play-rec-btn" class="control-button" disabled>Play Rec</button> <button id="stop-rec-btn" class="control-button" disabled>Stop Rec</button> </div>
+                 <div class="control-group loop-group"> <input type="checkbox" id="rec-loop-checkbox" disabled> <label for="rec-loop-checkbox" class="loop-label">Loop Rec</label> <label for="rec-loop-start-time" class="loop-label">Start(s):</label> <input type="number" id="rec-loop-start-time" class="time-input" min="0" step="0.1" value="0" disabled> <label for="rec-loop-end-time" class="loop-label">End(s):</label> <input type="number" id="rec-loop-end-time" class="time-input" min="0" step="0.1" value="0" disabled> </div>
+                 <div class="control-group"> <label for="rec-speed-slider">Rec Speed:</label> <input type="range" id="rec-speed-slider" min="0.1" max="2.0" step="0.05" value="1.0"> <span id="rec-speed-display">1.00x</span> </div>
+                 <div class="control-group button-group"> <button id="save-rec-btn" class="control-button" disabled>Save Rec</button> <button id="download-rec-btn" class="control-button" disabled>Download Rec</button> </div>
+                 <div class="control-group file-input-group"> <label for="load-rec-file-input" id="load-rec-file-label" class="control-button">Upload Rec File</label> <input type="file" id="load-rec-file-input" accept=".json,application/json"> </div>
+                 <div class="control-group"> <label for="recording-select">Load Saved:</label> <select id="recording-select" class="control-select"> <option value="">-- Select --</option> </select> </div>
+                 <div class="control-group button-group"> <button id="load-rec-btn" class="control-button" disabled>Load</button> <button id="rename-rec-btn" class="control-button" disabled>Rename</button> <button id="delete-rec-btn" class="control-button" disabled>Delete</button> </div>
+            </div>
+            <div id="loading-indicator">Loading audio samples...</div>
+        </div> </div>
+
+    <script src="js/main.js"></script>
+    <script src="js/audio-engine.js"></script>
+    <script src="js/ui-controls.js"></script>
+    <script src="js/music-playback.js"></script>
+    <script src="js/recording.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/preset-loader.js"></script>
+    <script src="js/pwa-handler.js"></script>
+    <script>
+        lucide.createIcons();
+
+        // Register Service Worker for PWA functionality
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', async () => {
+                try {
+                    // Force unregister any existing service workers first (helps with troubleshooting)
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    for (let registration of registrations) {
+                        await registration.unregister();
+                        console.log('Unregistered existing service worker');
+                    }
+
+                    // Now register the service worker again
+                    const registration = await navigator.serviceWorker.register('./service-worker.js', {
+                        scope: './'
+                    });
+                    console.log('ServiceWorker registered successfully:', registration.scope);
+
+                    // Force update
+                    if (registration.active) {
+                        registration.update();
+                        console.log('Forced service worker update');
+                    }
+                } catch (error) {
+                    console.error('ServiceWorker registration failed:', error);
+                }
+            });
+        }
+    </script>
+</body>
+</html>
