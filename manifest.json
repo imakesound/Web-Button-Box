@@ -2,9 +2,9 @@
   "name": "Web Button Accordion",
   "short_name": "Accordion",
   "description": "A 34-key button accordion app with playback and recording features",
-  "id": "/",
-  "scope": "/",
-  "start_url": "/index.html", // Changed from "./index.html" to "/index.html"
+  "id": "./", // Optional: Can also be relative
+  "scope": "./", // Changed to relative scope
+  "start_url": "./index.html", // Changed to relative start_url
   "display": "standalone",
   "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
   "background_color": "#1a202c",
@@ -44,13 +44,13 @@
       "src": "icons/icon-152x152.png",
       "sizes": "152x152",
       "type": "image/png",
-      "purpose": "any" // Often used by iOS for Add to Home Screen
+      "purpose": "any"
     },
     {
       "src": "icons/icon-192x192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any" // Required for Android install prompt
+      "purpose": "any"
     },
     {
       "src": "icons/icon-384x384.png",
@@ -62,19 +62,19 @@
       "src": "icons/icon-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable" // Required for Android install prompt, maskable is good practice
+      "purpose": "any maskable"
     }
   ],
   "screenshots": [
     {
-      "src": "icons/icon-512x512.png", // Placeholder - replace with actual screenshots
+      "src": "icons/icon-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
       "form_factor": "wide",
       "label": "Accordion App Desktop View"
     },
     {
-      "src": "icons/icon-512x512.png", // Placeholder - replace with actual screenshots
+      "src": "icons/icon-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
       "form_factor": "narrow",
@@ -82,4 +82,3 @@
     }
   ]
 }
-

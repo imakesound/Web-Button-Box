@@ -169,8 +169,8 @@
         // Register Service Worker for PWA functionality (Updated)
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                // Register with the correct scope '/' to match the manifest
-                navigator.serviceWorker.register('./service-worker.js', { scope: '/' })
+                // Register with a relative scope './' to match the manifest for GitHub Pages subpath deployment
+                navigator.serviceWorker.register('./service-worker.js', { scope: './' })
                     .then(registration => {
                         console.log('ServiceWorker registered successfully with scope:', registration.scope);
 
@@ -181,11 +181,10 @@
                                 installingWorker.onstatechange = () => {
                                     if (installingWorker.state === 'installed') {
                                         if (navigator.serviceWorker.controller) {
-                                            // New update available and the SW is controlling the page
+                                            // New update available
                                             console.log('New content is available; please refresh.');
-                                            // You could show a UI element here asking the user to refresh
                                         } else {
-                                            // Content is cached for the first time (offline use)
+                                            // Content is cached for offline use
                                             console.log('Content is cached for offline use.');
                                         }
                                     }
