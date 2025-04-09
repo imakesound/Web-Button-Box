@@ -24,10 +24,14 @@ const gcfNoteMapping = {
     'B31':{push:77,pull:83}, 'B32':{push:79,pull:85}, 'B33':{push:81,pull:87}, 'B34':{push:82,pull:88}
 };
 
-// --- Preset XML Files (Example - use your actual presets) ---
+// --- Preset XML Files ---
+// Define your preset files here.
+// Ensure the 'path' is correct relative to index.html (e.g., 'xml/your_song.xml')
+// Ensure the actual files exist in an 'xml' folder at the same level as index.html
 const presetXmlFiles = [
     { title: "Example Song 1", path: "xml/example1.musicxml" },
-{ title: "Example Song 2", path: "xml/example2.xml" },
+    { title: "Example Song 2", path: "xml/example2.xml" },
+    // Add more objects like the ones above for each preset file in your 'xml' directory
 ];
 
 // --- Global Variables ---
@@ -39,19 +43,19 @@ let isPointerDown = false;
 const activeTouches = new Map();
 let currentBellowsMode = 'push';
 let currentToneName = 'FBE'; // Default tone
-let activeNoteMapping = fbeNoteMapping; // Default mapping (NOW USES FULL MAP)
-let osmd;
-let scoreNotes = [];
-let allParsedNotes = [];
+let activeNoteMapping = fbeNoteMapping; // Default mapping
+let osmd; // OpenSheetMusicDisplay instance
+let scoreNotes = []; // Parsed notes strictly matching the mapping
+let allParsedNotes = []; // Parsed notes including substitutions
 let isPlaying = false; // MusicXML playback flag
 let tempo = 120; // Default tempo, will be updated from score
-let isScoreLoaded = false;
+let isScoreLoaded = false; // Flag if a score is loaded
 let currentScoreTitle = ""; // Title of the loaded score
 let playbackStartTime = 0; // Reference for music playback timing
 let visualTimeoutIds = []; // Store timeouts for music playback visuals
 // SEPARATE Speed Factors
-let musicPlaybackSpeedFactor = 1.0;
-let recordingPlaybackSpeedFactor = 1.0;
+let musicPlaybackSpeedFactor = 1.0; // Speed for MusicXML playback
+let recordingPlaybackSpeedFactor = 1.0; // Speed for recording playback
 let progressUpdateId = null; // requestAnimationFrame ID for music progress
 let parsedLastNoteEndTime1x = 0; // Duration of the parsed score at 1x speed
 let currentLoopStartTime1x = 0; // Start time (1x) for music loop segment
@@ -69,35 +73,48 @@ let recordingProgressUpdateId = null;
 let recordingTotalDurationSeconds = 0;
 let currentRecordingSegmentStartTimeSec = 0;
 let currentRecordingSegmentEndTimeSec = 0;
-const RECORDINGS_INDEX_KEY = 'accordionRecordingsIndex';
-const RECORDING_PREFIX = 'accordionRecording_';
+const RECORDINGS_INDEX_KEY = 'accordionRecordingsIndex'; // localStorage key for index
+const RECORDING_PREFIX = 'accordionRecording_'; // localStorage key prefix for recordings
 
 // --- Element References ---
-// (Keep the rest of the variable declarations as they were)
+// Declare variables for DOM elements
 let loadingIndicator, board, bellowsToggle, toneSelect, themeSelect, body,
-musicSheetArea, toggleSheetBtn, osmdContainer, fileInput,
-xmlPresetSelect, loadPresetBtn,
-playBtn, playSubBtn, stopBtn, loopCheckbox,
-loopStartMeasureInput, loopEndMeasureInput,
-recordBtn, playRecBtn, stopRecBtn,
-recLoopCheckbox, recLoopStartTimeInput, recLoopEndTimeInput,
-saveRecBtn, downloadRecBtn,
-recordingSelect, loadRecBtn, deleteRecBtn, renameRecBtn,
-loadRecFileInput, loadRecFileLabel,
-statusDiv, progressDisplayElement,
-speedSlider, speedDisplay, recSpeedSlider, recSpeedDisplay,
-buttons, customHighlight,
-sidebarToggleBtn, controlsSidebar;
+    musicSheetArea, toggleSheetBtn, osmdContainer, fileInput,
+    xmlPresetSelect, loadPresetBtn,
+    playBtn, playSubBtn, stopBtn, loopCheckbox,
+    loopStartMeasureInput, loopEndMeasureInput,
+    recordBtn, playRecBtn, stopRecBtn,
+    recLoopCheckbox, recLoopStartTimeInput, recLoopEndTimeInput,
+    saveRecBtn, downloadRecBtn,
+    recordingSelect, loadRecBtn, deleteRecBtn, renameRecBtn,
+    loadRecFileInput, loadRecFileLabel,
+    statusDiv, progressDisplayElement,
+    speedSlider, speedDisplay, recSpeedSlider, recSpeedDisplay,
+    buttons, customHighlight,
+    sidebarToggleBtn, controlsSidebar;
 
-// --- Utility Function for Time Formatting (Unchanged) ---
-function formatTime(totalSeconds) { /* ... */ }
+// --- Utility Function for Time Formatting ---
+/**
+ * Formats seconds into MM:SS format.
+ * @param {number} totalSeconds - Total seconds.
+ * @returns {string} - Formatted time string.
+ */
+function formatTime(totalSeconds) {
+    if (isNaN(totalSeconds) || totalSeconds < 0) {
+        return "--:--";
+    }
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = Math.floor(totalSeconds % 60);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+}
 
 // --- Wait for DOM Ready ---
+// Executes when the HTML document is fully loaded and parsed.
 document.addEventListener('DOMContentLoaded', () => {
     console.log("DOM fully loaded and parsed.");
 
     // --- Get Element References ---
-    // (Keep all the getElementById/querySelectorAll calls as they were)
+    // Assign DOM elements to variables
     buttons = document.querySelectorAll('.acc-button');
     loadingIndicator = document.getElementById('loading-indicator');
     board = document.querySelector('.button-board');
@@ -109,8 +126,8 @@ document.addEventListener('DOMContentLoaded', () => {
     toggleSheetBtn = document.getElementById('toggle-sheet-music');
     osmdContainer = document.getElementById('osmd-container');
     fileInput = document.getElementById('musicxml-file');
-    xmlPresetSelect = document.getElementById('xml-preset-select');
-    loadPresetBtn = document.getElementById('load-preset-btn');
+    xmlPresetSelect = document.getElementById('xml-preset-select'); // Preset dropdown
+    loadPresetBtn = document.getElementById('load-preset-btn'); // Preset load button
     playBtn = document.getElementById('play-btn');
     playSubBtn = document.getElementById('play-sub-btn');
     stopBtn = document.getElementById('stop-btn');
@@ -143,7 +160,7 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log("Element references obtained.");
 
     // --- Check crucial elements ---
-    // (Keep checks as they were)
+    // Log errors if essential elements are missing
     if (!sidebarToggleBtn || !controlsSidebar) console.error("CRITICAL: Sidebar elements not found!");
     if (!speedSlider || !speedDisplay) console.error("CRITICAL: Music speed slider elements not found!");
     if (!recSpeedSlider || !recSpeedDisplay) console.error("CRITICAL: Recording speed slider elements not found!");
@@ -153,50 +170,90 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     // --- Initialize Audio Context ---
-    initAudioContext(); // Assumes this function exists in audio-engine.js
+    // Function assumed to be in audio-engine.js
+    initAudioContext();
     console.log("Audio Context Init called.");
 
     // --- Initialize OSMD (Sheet Music Display) ---
     try {
-        osmd = new opensheetmusicdisplay.OpenSheetMusicDisplay(osmdContainer, { /* ... options ... */ });
+        // Options for OSMD rendering
+        osmd = new opensheetmusicdisplay.OpenSheetMusicDisplay(osmdContainer, {
+            autoResize: true, // Adjust automatically on container resize
+            backend: "svg", // Rendering engine
+            drawTitle: true, // Display the score title
+            // drawingParameters: "compact", // Try different rendering styles if needed
+            followCursor: true, // Make the view follow the playback cursor
+            // Add other OSMD options as needed
+        });
         console.log("OSMD Initialized.");
+        // Hide cursor initially
         setTimeout(() => { if (osmd?.cursor) osmd.cursor.hide(); }, 100);
     }
-    catch (e) { /* ... error handling ... */ }
+    catch (e) {
+        console.error("Error initializing OSMD:", e);
+        if(osmdContainer) osmdContainer.textContent = "Error initializing sheet music display.";
+    }
     console.log("OSMD Init attempt done.");
 
     // --- Populate Recordings List on Load ---
-    populateRecordingsList(); // Assumes this function exists in storage.js
+    // Function assumed to be in storage.js
+    populateRecordingsList();
     console.log("Recordings list populated.");
 
-    // --- Populate Preset XML Dropdown ---
-    if (xmlPresetSelect) { /* ... populate ... */ }
-    console.log("Preset XML dropdown populated.");
+    // --- Populate Preset XML Dropdown --- // <<< --- MODIFIED/ADDED BLOCK --- >>>
+    // Check if the dropdown element and the preset list exist
+    if (xmlPresetSelect && typeof presetXmlFiles !== 'undefined' && presetXmlFiles.length > 0) {
+        console.log(`Populating preset dropdown with ${presetXmlFiles.length} items...`);
+        // Loop through the defined presets
+        presetXmlFiles.forEach(preset => {
+            // Create a new <option> element
+            const option = document.createElement('option');
+            option.value = preset.path; // Set the option value to the file path
+            option.textContent = preset.title; // Set the display text to the title
+            // Add the new option to the dropdown
+            xmlPresetSelect.appendChild(option);
+        });
+        console.log("Preset XML dropdown populated."); // Log success
+    } else if (xmlPresetSelect) {
+         // Log if dropdown exists but no presets are defined
+         console.log("Preset XML dropdown found, but no presets defined in presetXmlFiles array.");
+    } else {
+         // Log error if the dropdown element itself is missing
+         console.error("Preset XML dropdown element (#xml-preset-select) not found.");
+    }
+    // <<< --- END OF MODIFIED/ADDED BLOCK --- >>>
 
     // --- Initial UI State ---
-    // (Keep initial state settings as they were)
-    if(musicSheetArea) musicSheetArea.classList.add('hidden');
+    // Set default states for UI elements
+    if(musicSheetArea) musicSheetArea.classList.add('hidden'); // Start with sheet music hidden
     if(toggleSheetBtn) toggleSheetBtn.textContent = "Show Music";
     if(progressDisplayElement) progressDisplayElement.textContent = '--:-- / --:--';
     if(speedDisplay) speedDisplay.textContent = `${musicPlaybackSpeedFactor.toFixed(2)}x`;
     if(recSpeedDisplay) recSpeedDisplay.textContent = `${recordingPlaybackSpeedFactor.toFixed(2)}x`;
+    // Disable recording management buttons if no recording is selected initially
     if(renameRecBtn) renameRecBtn.disabled = recordingSelect?.value === "";
     if(deleteRecBtn) deleteRecBtn.disabled = recordingSelect?.value === "";
     if(loadRecBtn) loadRecBtn.disabled = recordingSelect?.value === "";
-    if(loadingIndicator) loadingIndicator.style.display = 'none';
+    if(loadingIndicator) loadingIndicator.style.display = 'none'; // Hide loading indicator
 
 
     // --- Sidebar Toggle Logic (Mobile Overlay) ---
-    // (Keep toggle logic as it was)
+    // Handles showing/hiding the controls sidebar on mobile
     if (sidebarToggleBtn && controlsSidebar) {
         console.log("Attaching sidebar overlay toggle listener.");
+        // Toggle 'open' class on button click
         sidebarToggleBtn.addEventListener('click', (e) => {
             console.log("Sidebar toggle button clicked.");
             controlsSidebar.classList.toggle('open');
             console.log("Sidebar 'open' class toggled. Current classes:", controlsSidebar.className);
         });
+        // Close sidebar if clicking outside of it on mobile
         document.addEventListener('click', (event) => {
-            if (controlsSidebar.classList.contains('open') && !controlsSidebar.contains(event.target) && !sidebarToggleBtn.contains(event.target) && window.matchMedia('(max-width: 767px)').matches) {
+            // Check if sidebar is open, click was outside sidebar and toggle button, and screen is mobile width
+            if (controlsSidebar.classList.contains('open') &&
+                !controlsSidebar.contains(event.target) &&
+                !sidebarToggleBtn.contains(event.target) &&
+                window.matchMedia('(max-width: 767px)').matches) {
                 console.log("Click outside sidebar detected on mobile, closing.");
                 controlsSidebar.classList.remove('open');
             }
@@ -204,15 +261,10 @@ document.addEventListener('DOMContentLoaded', () => {
     } else { console.error("Could not attach sidebar toggle listener - elements missing."); }
 
     console.log("Initial setup complete.");
-});
+}); // End DOMContentLoaded
 
 // --- Add the 'open' class style dynamically ---
-// (Keep this style injection as it was)
+// This style makes the sidebar slide in when the 'open' class is added
 const styleSheet = document.createElement("style");
 styleSheet.innerText = `#controls-sidebar.open { transform: translateX(0); }`;
 document.head.appendChild(styleSheet);
-
-// --- Stubs ---
-// Remove any stubs you might have added here earlier
-// function initAudioContext() { console.log("stub: initAudioContext called"); }
-// function populateRecordingsList() { console.log("stub: populateRecordingsList called"); }
