@@ -1,61 +1,68 @@
-// service-worker.js - Enhanced for better PWA support
-const CACHE_VERSION = 'v1.0.1'; // Update this version when you make changes
+// service-worker.js - Enhanced for better PWA support & faster offline load
+const CACHE_VERSION = 'v1.0.2'; // Increment version for update
 const APP_CACHE = 'accordion-app-' + CACHE_VERSION;
 const AUDIO_CACHE = 'accordion-audio-' + CACHE_VERSION;
 const XML_CACHE = 'accordion-xml-' + CACHE_VERSION;
 
 // Core app assets to cache immediately
 const CORE_ASSETS = [
-    './',
-'./index.html',
-'./offline.html',
-'./manifest.json',
-'./css/styles.css',
-'./js/main.js',
-'./js/audio-engine.js',
-'./js/ui-controls.js',
-'./js/music-playback.js',
-'./js/recording.js',
-'./js/storage.js',
-'./js/preset-loader.js',
-'./js/pwa-handler.js',
-'./icons/icon-192x192.png',
-'./icons/icon-512x512.png'
+    './', // Cache the root path (often serves index.html)
+    './index.html',
+    './offline.html', // Ensure offline page is cached
+    './manifest.json',
+    './css/styles.css',
+    './js/main.js',
+    './js/audio-engine.js',
+    './js/ui-controls.js',
+    './js/music-playback.js',
+    './js/recording.js',
+    './js/storage.js',
+    './js/preset-loader.js',
+    './js/pwa-handler.js',
+    './icons/icon-192x192.png',
+    './icons/icon-512x512.png'
+    // Add other essential icons if needed (e.g., 152 for iOS)
+    // './icons/icon-152x152.png'
 ];
 
 // External dependencies to cache
 const EXTERNAL_DEPS = [
     'https://cdn.tailwindcss.com',
-'https://cdn.jsdelivr.net/npm/opensheetmusicdisplay@1.8.4/build/opensheetmusicdisplay.min.js',
-'https://unpkg.com/lucide@latest'
+    'https://cdn.jsdelivr.net/npm/opensheetmusicdisplay@1.8.4/build/opensheetmusicdisplay.min.js',
+    'https://unpkg.com/lucide@latest'
 ];
 
-// Service worker installation - cache core assets
+// --- Service Worker Installation ---
 self.addEventListener('install', event => {
     console.log('[Service Worker] Installing version ' + CACHE_VERSION);
-
-    // Skip waiting to ensure the new service worker activates immediately
-    self.skipWaiting();
+    self.skipWaiting(); // Activate new SW immediately
 
     event.waitUntil(
         caches.open(APP_CACHE)
         .then(cache => {
             console.log('[Service Worker] Caching core app assets');
-            return cache.addAll(CORE_ASSETS)
-            .then(() => {
+            // Cache core assets
+            const coreCachePromise = cache.addAll(CORE_ASSETS).then(() => {
                 console.log('[Service Worker] Core assets cached successfully');
-                return cache.addAll(EXTERNAL_DEPS)
-                .catch(err => {
-                    console.warn('[Service Worker] Some external dependencies failed to cache:', err);
-                    // Continue even if external deps fail - we'll try again later
-                    return Promise.resolve();
-                });
+            }).catch(err => {
+                console.error('[Service Worker] Failed to cache some core assets:', err);
+                // Don't let core asset failure block installation entirely if some succeed
+                return Promise.resolve();
             });
+
+            // Cache external dependencies (best effort)
+            const externalDepsPromise = cache.addAll(EXTERNAL_DEPS).catch(err => {
+                console.warn('[Service Worker] Some external dependencies failed to cache:', err);
+                // Continue even if external deps fail
+                return Promise.resolve();
+            });
+
+            return Promise.all([coreCachePromise, externalDepsPromise]);
         })
     );
 });
 
-// Cleanup old caches when service worker activates
+// --- Service Worker Activation ---
 self.addEventListener('activate', event => {
     console.log('[Service Worker] Activating version ' + CACHE_VERSION);
 
@@ -63,11 +70,11 @@ self.addEventListener('activate', event => {
         caches.keys().then(cacheNames => {
             return Promise.all(
                 cacheNames.filter(cacheName => {
-                    // Delete any old versions of our caches
+                    // Delete any old versions of our app/audio/xml caches
                     return cacheName.startsWith('accordion-') &&
-                    cacheName !== APP_CACHE &&
-                    cacheName !== AUDIO_CACHE &&
-                    cacheName !== XML_CACHE;
+                           cacheName !== APP_CACHE &&
+                           cacheName !== AUDIO_CACHE &&
+                           cacheName !== XML_CACHE;
                 }).map(cacheName => {
                     console.log('[Service Worker] Removing old cache:', cacheName);
                     return caches.delete(cacheName);
@@ -75,203 +82,199 @@ self.addEventListener('activate', event => {
             );
         }).then(() => {
             console.log('[Service Worker] Claiming clients');
+            // Ensure the newly activated service worker takes control immediately
             return self.clients.claim();
         })
     );
 });
 
-// Intercept fetch requests
+// --- Fetch Event Interception ---
 self.addEventListener('fetch', event => {
-    // Log the URL being fetched (helpful for debugging)
-    // console.log('[Service Worker] Fetching:', event.request.url);
-
     const url = new URL(event.request.url);
 
-    // Different strategies for different types of resources
+    // --- Navigation Requests (HTML pages) ---
+    // Use Cache First, falling back to Network, then Offline page
+    if (event.request.mode === 'navigate') {
+        event.respondWith(handlePageFetch(event.request));
+        return;
+    }
 
-    // 1. Audio sample files (.wav) - Cache with network fallback
+    // --- Audio sample files (.wav) ---
+    // Cache First, then Network
     if (url.pathname.endsWith('.wav')) {
         event.respondWith(handleAudioFetch(event.request));
         return;
     }
 
-    // 2. MusicXML files - Cache with network fallback
+    // --- MusicXML files ---
+    // Cache First, then Network
     if (url.pathname.endsWith('.xml') || url.pathname.endsWith('.musicxml')) {
         event.respondWith(handleXmlFetch(event.request));
         return;
     }
 
-    // 3. External CDN resources - Cache with network update
+    // --- External CDN resources ---
+    // Cache First, then Network (Stale-while-revalidate pattern implicitly)
     if (!url.pathname.startsWith('/') &&
         (url.host.includes('cdn.') || url.host.includes('unpkg.com'))) {
         event.respondWith(handleCdnFetch(event.request));
-    return;
-        }
-
-        // 4. HTML page requests - Network with cache fallback, fallback to offline page
-        if (event.request.mode === 'navigate' ||
-            (event.request.method === 'GET' &&
-            event.request.headers.get('accept').includes('text/html'))) {
-            event.respondWith(handlePageFetch(event.request));
         return;
+    }
+
+    // --- All Other Requests (CSS, JS, Fonts, Icons etc.) ---
+    // Cache First, then Network
+    event.respondWith(
+        caches.match(event.request).then(cachedResponse => {
+            if (cachedResponse) {
+                // console.log('[Service Worker] Serving from cache:', event.request.url);
+                return cachedResponse;
             }
 
-            // 5. All other requests - Cache falling back to network
-            event.respondWith(
-                caches.match(event.request).then(response => {
-                    return response || fetch(event.request)
-                    .then(fetchResponse => {
-                        // Don't cache non-GET requests
-                        if (event.request.method !== 'GET') return fetchResponse;
-
-                        // Cache successful responses
-                        if (fetchResponse.ok) {
-                            return caches.open(APP_CACHE).then(cache => {
-                                cache.put(event.request, fetchResponse.clone());
-                                return fetchResponse;
-                            });
-                        }
-
-                        return fetchResponse;
-                    })
-                    .catch(error => {
-                        console.error('[Service Worker] Fetch failed:', error);
-                        // Try to respond with a fallback
-                        if (event.request.headers.get('accept').includes('text/css')) {
-                            // Empty CSS as fallback
-                            return new Response('/* Offline fallback CSS */', { headers: { 'Content-Type': 'text/css' } });
-                        }
-                        if (event.request.headers.get('accept').includes('text/javascript')) {
-                            // Empty JavaScript as fallback
-                            return new Response('// Offline fallback JavaScript', { headers: { 'Content-Type': 'text/javascript' } });
-                        }
-                        return new Response('Network error', { status: 404, statusText: 'Not found' });
+            // console.log('[Service Worker] Not in cache, fetching from network:', event.request.url);
+            return fetch(event.request).then(networkResponse => {
+                // Cache successful GET requests
+                if (networkResponse && networkResponse.ok && event.request.method === 'GET') {
+                    const responseToCache = networkResponse.clone();
+                    caches.open(APP_CACHE).then(cache => {
+                        cache.put(event.request, responseToCache);
                     });
-                })
-            );
+                }
+                return networkResponse;
+            }).catch(error => {
+                console.error('[Service Worker] Fetch failed for non-navigation request:', event.request.url, error);
+                // Provide a generic fallback for failed non-essential resources if needed
+                // For CSS/JS, returning an empty response might be better than failing
+                if (event.request.headers.get('accept').includes('text/css')) {
+                    return new Response('', { headers: { 'Content-Type': 'text/css' } });
+                }
+                if (event.request.headers.get('accept').includes('text/javascript')) {
+                    return new Response('', { headers: { 'Content-Type': 'text/javascript' } });
+                }
+                // Return a simple error response
+                return new Response('Resource not available offline.', { status: 404, statusText: 'Not Found' });
+            });
+        })
+    );
 });
 
-// Handle audio sample fetch requests
+
+// --- Specific Fetch Handlers ---
+
+/**
+ * Handles navigation requests (HTML pages).
+ * Cache first, then network, then offline page.
+ */
+async function handlePageFetch(request) {
+    try {
+        // 1. Try to get the response from the cache.
+        const cachedResponse = await caches.match(request);
+        if (cachedResponse) {
+            // console.log('[Service Worker] Serving page from cache:', request.url);
+            return cachedResponse;
+        }
+
+        // 2. If not in cache, try to fetch from the network.
+        // console.log('[Service Worker] Page not in cache, fetching from network:', request.url);
+        const networkResponse = await fetch(request);
+
+        // 3. If network fetch is successful, cache it and return it.
+        if (networkResponse && networkResponse.ok) {
+            const responseToCache = networkResponse.clone();
+            const cache = await caches.open(APP_CACHE);
+            await cache.put(request, responseToCache);
+            return networkResponse;
+        }
+
+        // 4. If network fetch fails (e.g., offline, server error), return the offline page from cache.
+        console.warn('[Service Worker] Network fetch failed for page, serving offline page.');
+        const offlinePage = await caches.match('./offline.html');
+        return offlinePage || new Response("You are offline and the offline page isn't cached.", { status: 503, statusText: "Service Unavailable" });
+
+    } catch (error) {
+        // 5. Catch any other errors (e.g., network totally unavailable) and serve offline page.
+        console.error('[Service Worker] Error handling page fetch:', error);
+        const offlinePage = await caches.match('./offline.html');
+        return offlinePage || new Response("You are offline and the offline page isn't cached.", { status: 503, statusText: "Service Unavailable" });
+    }
+}
+
+
+/**
+ * Handles audio sample fetch requests.
+ * Cache first, then network.
+ */
 function handleAudioFetch(request) {
-    return caches.match(request)
-    .then(cachedResponse => {
-        // Return cached response if available
+    return caches.match(request).then(cachedResponse => {
         if (cachedResponse) {
             return cachedResponse;
         }
-
-        // Otherwise fetch from network and cache
-        return fetch(request)
-        .then(networkResponse => {
-            if (!networkResponse || networkResponse.status !== 200) {
-                return networkResponse;
-            }
-
-            // Clone the response and cache it
-            const responseToCache = networkResponse.clone();
-            caches.open(AUDIO_CACHE)
-            .then(cache => cache.put(request, responseToCache));
-
-            return networkResponse;
-        })
-        .catch(error => {
-            console.error('[Service Worker] Audio fetch failed:', error);
-            return new Response(
-                JSON.stringify({ error: 'Audio file not available offline' }),
-                                {
-                                    status: 503,
-                                    headers: { 'Content-Type': 'application/json' }
-                                }
-            );
-        });
-    });
-}
-
-// Handle MusicXML fetch requests
-function handleXmlFetch(request) {
-    return caches.match(request)
-    .then(cachedResponse => {
-        // Return cached response if available
-        if (cachedResponse) {
-            return cachedResponse;
-        }
-
-        // Otherwise fetch from network and cache
-        return fetch(request)
-        .then(networkResponse => {
-            if (!networkResponse || networkResponse.status !== 200) {
-                return networkResponse;
-            }
-
-            // Clone the response and cache it
-            const responseToCache = networkResponse.clone();
-            caches.open(XML_CACHE)
-            .then(cache => cache.put(request, responseToCache));
-
-            return networkResponse;
-        })
-        .catch(error => {
-            console.error('[Service Worker] XML fetch failed:', error);
-            return new Response(
-                JSON.stringify({ error: 'MusicXML file not available offline' }),
-                                {
-                                    status: 503,
-                                    headers: { 'Content-Type': 'application/json' }
-                                }
-            );
-        });
-    });
-}
-
-// Handle CDN fetch requests
-function handleCdnFetch(request) {
-    return caches.match(request)
-    .then(cachedResponse => {
-        const fetchPromise = fetch(request)
-        .then(networkResponse => {
-            if (networkResponse && networkResponse.status === 200) {
+        return fetch(request).then(networkResponse => {
+            if (networkResponse && networkResponse.ok) {
                 const responseToCache = networkResponse.clone();
-                caches.open(APP_CACHE)
-                .then(cache => cache.put(request, responseToCache));
+                caches.open(AUDIO_CACHE).then(cache => cache.put(request, responseToCache));
             }
             return networkResponse;
-        })
-        .catch(() => {
-            console.log('[Service Worker] Using cached version of CDN resource');
+        }).catch(error => {
+            console.error('[Service Worker] Audio fetch failed:', request.url, error);
+            return new Response('Audio not available offline.', { status: 404, headers: { 'Content-Type': 'text/plain' } });
+        });
+    });
+}
+
+/**
+ * Handles MusicXML fetch requests.
+ * Cache first, then network.
+ */
+function handleXmlFetch(request) {
+    return caches.match(request).then(cachedResponse => {
+        if (cachedResponse) {
             return cachedResponse;
+        }
+        return fetch(request).then(networkResponse => {
+            if (networkResponse && networkResponse.ok) {
+                const responseToCache = networkResponse.clone();
+                caches.open(XML_CACHE).then(cache => cache.put(request, responseToCache));
+            }
+            return networkResponse;
+        }).catch(error => {
+            console.error('[Service Worker] XML fetch failed:', request.url, error);
+            return new Response('XML not available offline.', { status: 404, headers: { 'Content-Type': 'text/plain' } });
+        });
+    });
+}
+
+/**
+ * Handles CDN fetch requests.
+ * Cache first, then network. Updates cache in background if network succeeds.
+ */
+function handleCdnFetch(request) {
+    return caches.match(request).then(cachedResponse => {
+        // Fetch from network in the background to update cache
+        const fetchPromise = fetch(request).then(networkResponse => {
+            if (networkResponse && networkResponse.ok) {
+                const responseToCache = networkResponse.clone();
+                caches.open(APP_CACHE).then(cache => cache.put(request, responseToCache));
+            }
+            return networkResponse; // Return network response if cache missed initially
+        }).catch(err => {
+            console.warn('[Service Worker] CDN fetch failed, relying on cache (if available):', request.url, err);
+            // If network fails, and we didn't have a cached response initially, return an error
+            if (!cachedResponse) {
+                return new Response('CDN resource not available.', { status: 404, statusText: 'Not Found' });
+            }
+            // Otherwise, the cached response (returned below) is used.
         });
 
-        // Return cached response immediately if available, otherwise wait for fetch
+        // Return cached response immediately if available, otherwise wait for network fetch
         return cachedResponse || fetchPromise;
     });
 }
 
-// Handle HTML page fetch requests
-function handlePageFetch(request) {
-    return fetch(request)
-    .then(response => {
-        if (response && response.status === 200) {
-            const responseToCache = response.clone();
-            caches.open(APP_CACHE)
-            .then(cache => cache.put(request, responseToCache));
-        }
-        return response;
-    })
-    .catch(() => {
-        return caches.match(request)
-        .then(cachedResponse => {
-            if (cachedResponse) {
-                return cachedResponse;
-            }
-            // If not in cache, return the offline page
-            return caches.match('./offline.html');
-        });
-    });
-}
 
-// Listen for message events (e.g., to clear cache)
+// --- Message Event Listener ---
 self.addEventListener('message', event => {
     if (event.data && event.data.action === 'CLEAR_CACHES') {
+        // Handle cache clearing
         event.waitUntil(
             caches.keys().then(cacheNames => {
                 return Promise.all(
@@ -290,28 +293,16 @@ self.addEventListener('message', event => {
     }
 
     if (event.data && event.data.action === 'CACHE_AUDIO_TONE') {
+        // Handle audio caching request (implementation likely in pwa-handler.js triggers fetches)
         const tone = event.data.tone;
         if (!tone) return;
-
-        console.log(`[Service Worker] Received request to cache '${tone}' audio samples`);
-
-        event.waitUntil(
-            caches.open(AUDIO_CACHE).then(cache => {
-                console.log(`[Service Worker] Caching ${tone} audio samples`);
-                return self.clients.matchAll().then(clients => {
-                    if (clients && clients.length > 0) {
-                        clients[0].postMessage({
-                            action: 'CACHING_AUDIO_TONE',
-                            tone: tone
-                        });
-                    }
-                });
-            })
-        );
+        console.log(`[Service Worker] Received request to cache '${tone}' audio samples via message.`);
+        // Actual caching happens via fetch events intercepted above
     }
 
     if (event.data && event.data.action === 'SKIP_WAITING') {
+        // Allow forcing activation
         self.skipWaiting();
-        console.log('[Service Worker] Skip waiting called');
+        console.log('[Service Worker] Skip waiting called via message');
     }
 });
